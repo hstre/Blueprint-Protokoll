@@ -70,7 +70,7 @@ Blueprint produces the structured knowledge. Alexandria anchors it immutably. Th
 
 H.-Steffen Rentschler
 Independent researcher
-SSRN author page: [link to be added]
+SSRN author page:  
 
 -----
 
