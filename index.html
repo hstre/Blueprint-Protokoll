@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blueprint Studio — Prototype</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text2: #8b949e;
+    --blue: #1f6feb;
+    --blue-light: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --orange: #f0883e;
+    --red: #f85149;
+    --purple: #a371f7;
+    --s-secure: #238636;
+    --s-probable: #9e6a03;
+    --s-uncertain: #bb4a09;
+    --s-collapsed: #b62324;
+    --s-secure-fg: #3fb950;
+    --s-probable-fg: #e3b341;
+    --s-uncertain-fg: #f0883e;
+    --s-collapsed-fg: #f85149;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-size: 13px;
+  }
+
+  /* ── Menu Bar ── */
+  #menubar {
+    height: 48px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  #logo {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--blue-light);
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #logo svg { opacity: 0.9; }
+  #blueprint-title {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 4px;
+  }
+  #blueprint-title span { color: var(--text2); margin-right: 6px; }
+  .badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+  #snapshot-badge { border-color: var(--border); color: var(--text2); }
+  #status-badge { border-color: var(--s-probable); color: var(--s-probable-fg); background: rgba(158,106,3,0.15); }
+  .menu-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .menu-btn:hover { background: var(--border); }
+  .menu-btn.primary {
+    background: var(--s-secure);
+    border-color: var(--green);
+    color: #fff;
+    font-weight: 600;
+  }
+  .menu-btn.primary:hover { background: #2ea043; }
+  .menu-btn.primary:disabled { background: var(--bg3); border-color: var(--border); color: var(--text2); cursor: not-allowed; }
+
+  /* ── Main Layout ── */
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Left Panel ── */
+  #left-panel {
+    width: 220px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  #left-panel h3 {
+    padding: 12px 14px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .scaffold-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.12s;
+  }
+  .scaffold-item:hover { background: var(--bg3); }
+  .scaffold-item.active { background: rgba(31,111,235,0.12); border-left: 2px solid var(--blue-light); padding-left: 12px; }
+  .scaffold-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .scaffold-label { font-size: 12px; font-weight: 500; flex: 1; }
+  .scaffold-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .s-ok { background: var(--green); }
+  .s-warn { background: var(--yellow); }
+  .s-err { background: var(--red); }
+
+  #left-legend {
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+  }
+  #left-legend h4 { font-size: 11px; color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 11px; color: var(--text2); }
+  .legend-shape { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+
+  /* ── Center Panel ── */
+  #center-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  #arena-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  #arena-header strong { color: var(--text); }
+  #arena-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  #graph-svg {
+    width: 100%;
+    height: 100%;
+    cursor: default;
+  }
+  #node-detail {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    display: none;
+    animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  #node-detail h4 { font-size: 13px; margin-bottom: 6px; }
+  #node-detail p { font-size: 12px; color: var(--text2); margin-bottom: 10px; line-height: 1.5; }
+  #node-detail-meta { display: flex; gap: 8px; margin-bottom: 10px; }
+  .tag {
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  #node-detail-actions { display: flex; gap: 8px; }
+  .action-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.12s;
+  }
+  .action-btn:hover { background: var(--border); }
+  .action-btn.danger { border-color: var(--red); color: var(--red); }
+  .action-btn.danger:hover { background: rgba(248,81,73,0.12); }
+  #detail-close {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    margin-top: -2px;
+  }
+
+  /* ── Right Panel ── */
+  #right-panel {
+    width: 290px;
+    background: var(--bg2);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  #ai-panel {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 14px;
+    flex-shrink: 0;
+  }
+  #ai-panel h3 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+  }
+  #ai-mode-btns {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .mode-btn {
+    flex: 1;
+    padding: 5px 4px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.12s;
+  }
+  .mode-btn:hover { border-color: var(--blue); color: var(--blue-light); }
+  .mode-btn.active { background: rgba(31,111,235,0.2); border-color: var(--blue); color: var(--blue-light); font-weight: 600; }
+  .mode-btn.active.adversarial { background: rgba(248,81,73,0.15); border-color: var(--red); color: var(--red); }
+  #ai-output {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--text2);
+    min-height: 80px;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  #ai-output .ai-system { color: var(--text2); font-style: italic; }
+  #ai-output .ai-attack { color: var(--orange); }
+  #ai-output .ai-label { display: inline-block; background: rgba(248,81,73,0.15); border: 1px solid var(--red); border-radius: 3px; padding: 1px 5px; font-size: 10px; font-weight: 700; color: var(--red); margin-bottom: 4px; }
+  #ai-output .ai-explore { color: var(--blue-light); }
+  #ai-output .ai-precision { color: var(--green); }
+
+  #delta-log {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #delta-log h3 {
+    padding: 10px 14px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #delta-entries {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .delta-entry {
+    padding: 7px 14px;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .delta-time { font-size: 10px; color: var(--text2); }
+  .delta-actor {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 4px;
+  }
+  .actor-user { background: rgba(31,111,235,0.2); color: var(--blue-light); }
+  .actor-ai { background: rgba(163,113,247,0.2); color: var(--purple); }
+  .delta-desc { font-size: 11.5px; color: var(--text); margin-top: 3px; }
+  .delta-ref { font-size: 10.5px; color: var(--text2); }
+
+  /* ── Validation Bar ── */
+  #validation-bar {
+    height: 38px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+  #val-compiler { font-weight: 600; }
+  .val-ok { color: var(--green); }
+  .val-err { color: var(--red); }
+  .val-warn { color: var(--yellow); }
+  .val-stat { color: var(--text2); }
+  .val-stat span { color: var(--text); font-weight: 500; }
+  #val-spacer { flex: 1; }
+  #val-progress { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text2); }
+  .progress-bar-wrap { width: 80px; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--blue); border-radius: 3px; transition: width 0.4s ease; }
+
+  /* ── SVG Styles ── */
+  .edge-line { stroke-width: 2; fill: none; marker-end: url(#arrow-supports); }
+  .edge-supports { stroke: #2ea043; }
+  .edge-requires { stroke: #1f6feb; marker-end: url(#arrow-requires); }
+  .edge-contradicts { stroke: #f85149; marker-end: url(#arrow-contradicts); stroke-dasharray: 6 3; }
+  .node-shape { stroke-width: 2.5; cursor: pointer; transition: filter 0.15s; }
+  .node-shape:hover { filter: brightness(1.3); }
+  .node-shape.selected { filter: drop-shadow(0 0 8px rgba(88,166,255,0.8)); stroke-width: 3; }
+  .node-shape.under-attack { filter: drop-shadow(0 0 10px rgba(248,81,73,0.7)); animation: pulse 1.5s infinite; }
+  @keyframes pulse {
+    0%, 100% { filter: drop-shadow(0 0 8px rgba(248,81,73,0.5)); }
+    50% { filter: drop-shadow(0 0 14px rgba(248,81,73,0.9)); }
+  }
+  .node-label { font-family: -apple-system, sans-serif; font-size: 11px; fill: #c9d1d9; text-anchor: middle; pointer-events: none; dominant-baseline: central; }
+  .node-id { font-family: monospace; font-size: 10px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; dominant-baseline: central; }
+  .edge-label { font-family: -apple-system, sans-serif; font-size: 10px; fill: #8b949e; text-anchor: middle; pointer-events: none; }
+
+  /* Status colors */
+  .status-S { fill: rgba(35,134,54,0.25); stroke: #3fb950; }
+  .status-W { fill: rgba(158,106,3,0.25); stroke: #e3b341; }
+  .status-U { fill: rgba(187,74,9,0.25); stroke: #f0883e; }
+  .status-X { fill: rgba(182,35,36,0.25); stroke: #f85149; }
+
+  /* ── Modal ── */
+  #modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #modal-overlay.open { display: flex; animation: fadeInBg 0.2s ease; }
+  @keyframes fadeInBg { from { opacity: 0; } to { opacity: 1; } }
+  #modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 520px;
+    max-width: 90vw;
+    padding: 24px;
+    animation: popIn 0.2s ease;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.94); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  #modal h3 { font-size: 15px; margin-bottom: 6px; }
+  #modal .modal-sub { font-size: 12px; color: var(--text2); margin-bottom: 16px; }
+  #modal-attack-text {
+    background: rgba(248,81,73,0.08);
+    border: 1px solid rgba(248,81,73,0.3);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
+    color: var(--orange);
+    margin-bottom: 16px;
+    line-height: 1.55;
+  }
+  #modal-response-area {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 10px;
+    resize: vertical;
+    min-height: 70px;
+    font-family: inherit;
+    margin-bottom: 14px;
+  }
+  #modal-response-area:focus { outline: none; border-color: var(--blue); }
+  #modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-btn {
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.12s;
+  }
+  .modal-btn:hover { background: var(--border); }
+  .modal-btn.refine { border-color: var(--blue); color: var(--blue-light); }
+  .modal-btn.refine:hover { background: rgba(31,111,235,0.15); }
+  .modal-btn.defend { border-color: var(--green); color: var(--green); }
+  .modal-btn.defend:hover { background: rgba(63,185,80,0.15); }
+  .modal-btn.abandon { border-color: var(--red); color: var(--red); }
+  .modal-btn.abandon:hover { background: rgba(248,81,73,0.12); }
+
+  /* ── Attack Cards ── */
+  .attack-card {
+    background: rgba(248,81,73,0.08);
+    border: 1px solid rgba(248,81,73,0.3);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-top: 8px;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .attack-card:hover { background: rgba(248,81,73,0.15); }
+  .attack-card-label { font-size: 10px; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .attack-card-text { color: var(--orange); line-height: 1.4; }
+  .attack-card-node { color: var(--text2); font-size: 10.5px; margin-top: 3px; }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 9px;
+    font-size: 11px;
+    color: var(--text);
+    pointer-events: none;
+    z-index: 50;
+    display: none;
+    max-width: 200px;
+    line-height: 1.4;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+</style>
+</head>
+<body>
+
+<!-- Menu Bar -->
+<div id="menubar">
+  <div id="logo">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <rect x="2" y="2" width="18" height="18" rx="3" stroke="#1f6feb" stroke-width="1.5"/>
+      <circle cx="11" cy="11" r="3.5" fill="#1f6feb" opacity="0.7"/>
+      <line x1="6" y1="11" x2="8" y2="11" stroke="#58a6ff" stroke-width="1.5"/>
+      <line x1="14" y1="11" x2="16" y2="11" stroke="#58a6ff" stroke-width="1.5"/>
+      <line x1="11" y1="6" x2="11" y2="8" stroke="#58a6ff" stroke-width="1.5"/>
+      <line x1="11" y1="14" x2="11" y2="16" stroke="#58a6ff" stroke-width="1.5"/>
+    </svg>
+    Blueprint Studio
+  </div>
+  <div id="blueprint-title">
+    <span>Draft /</span>CO₂ Tax Effectiveness — Transport Sector Germany 2025–2035
+  </div>
+  <div class="badge" id="snapshot-badge">Δ-v7</div>
+  <div class="badge" id="status-badge">⚠ Under Review</div>
+  <button class="menu-btn" onclick="exportJSON()">⬇ Export JSON</button>
+  <button class="menu-btn primary" id="submit-btn" onclick="submitBlueprint()" disabled>Submit Blueprint</button>
+</div>
+
+<!-- Main -->
+<div id="main">
+
+  <!-- Left: Structure Panel -->
+  <div id="left-panel">
+    <h3>Blueprint Structure</h3>
+    <div id="scaffold-list"></div>
+    <div id="left-legend">
+      <h4>Claim Types</h4>
+      <div class="legend-row">
+        <div class="legend-shape">
+          <svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="rgba(31,111,235,0.2)" stroke="#58a6ff" stroke-width="1.5"/></svg>
+        </div>
+        E — Empirical
+      </div>
+      <div class="legend-row">
+        <div class="legend-shape">
+          <svg width="16" height="16"><polygon points="8,1 15,14 1,14" fill="rgba(163,113,247,0.2)" stroke="#a371f7" stroke-width="1.5"/></svg>
+        </div>
+        N — Normative
+      </div>
+      <div class="legend-row">
+        <div class="legend-shape">
+          <svg width="16" height="16"><polygon points="8,2 14,5 14,11 8,14 2,11 2,5" fill="rgba(63,185,80,0.2)" stroke="#3fb950" stroke-width="1.5"/></svg>
+        </div>
+        L — Logical
+      </div>
+      <div class="legend-row">
+        <div class="legend-shape">
+          <svg width="16" height="16"><rect x="2" y="4" width="12" height="8" rx="1" fill="rgba(210,153,34,0.2)" stroke="#e3b341" stroke-width="1.5"/></svg>
+        </div>
+        O — Operative
+      </div>
+      <div style="height:10px"></div>
+      <h4>Epistemic Status</h4>
+      <div class="legend-row"><span style="color:var(--s-secure-fg)">● S</span>&nbsp; Secure</div>
+      <div class="legend-row"><span style="color:var(--s-probable-fg)">● W</span>&nbsp; Probable</div>
+      <div class="legend-row"><span style="color:var(--s-uncertain-fg)">● U</span>&nbsp; Uncertain</div>
+      <div class="legend-row"><span style="color:var(--s-collapsed-fg)">● X</span>&nbsp; Collapsed</div>
+    </div>
+  </div>
+
+  <!-- Center: Epistemic Arena -->
+  <div id="center-panel">
+    <div id="arena-header">
+      <strong>Epistemic Arena</strong>
+      <span style="color:var(--border)">|</span>
+      <span>Claim graph · drag nodes · click to inspect</span>
+      <span style="flex:1"></span>
+      <div class="chip">5 claims</div>
+      <div class="chip">5 edges</div>
+    </div>
+    <div id="arena-wrap">
+      <svg id="graph-svg" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-supports" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#2ea043"/>
+          </marker>
+          <marker id="arrow-requires" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#1f6feb"/>
+          </marker>
+          <marker id="arrow-contradicts" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#f85149"/>
+          </marker>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <g id="edges-layer"></g>
+        <g id="nodes-layer"></g>
+      </svg>
+    </div>
+    <!-- Node Detail Drawer -->
+    <div id="node-detail">
+      <button id="detail-close" onclick="closeDetail()">×</button>
+      <div id="node-detail-meta"></div>
+      <h4 id="node-detail-title"></h4>
+      <p id="node-detail-content"></p>
+      <div id="node-detail-actions"></div>
+    </div>
+  </div>
+
+  <!-- Right: AI Panel + Δ-Log -->
+  <div id="right-panel">
+    <div id="ai-panel">
+      <h3>AI Integration</h3>
+      <div id="ai-mode-btns">
+        <button class="mode-btn" id="btn-explore" onclick="setAIMode('explore')">⚡ Explore</button>
+        <button class="mode-btn" id="btn-precision" onclick="setAIMode('precision')">🎯 Precision</button>
+        <button class="mode-btn adversarial" id="btn-adversarial" onclick="setAIMode('adversarial')">⚔ Adversarial</button>
+      </div>
+      <div id="ai-output">
+        <div class="ai-system">Select a node and choose an AI mode to begin. In Adversarial mode, AI will launch structured attacks against selected claims.</div>
+      </div>
+      <div id="attack-list" style="margin-top:8px;max-height:180px;overflow-y:auto;"></div>
+    </div>
+    <div id="delta-log">
+      <h3>Δ-Log — Revision History</h3>
+      <div id="delta-entries"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Validation Bar -->
+<div id="validation-bar">
+  <div id="val-compiler" class="val-warn">⚠ COMPILER: 2 ERRORS</div>
+  <div class="val-stat">Errors: <span id="val-errors">2</span></div>
+  <div class="val-stat">Warnings: <span id="val-warnings">1</span></div>
+  <div class="val-stat">Uncollapsed: <span id="val-attacks">0</span> attacks</div>
+  <div id="val-spacer"></div>
+  <div id="val-progress">
+    Scaffold
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:75%"></div></div>
+    <span id="progress-text">6/8</span>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h3 id="modal-title">Respond to Attack</h3>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div id="modal-attack-text"></div>
+    <textarea id="modal-response-area" placeholder="Write your epistemic defense, refinement, or justification for abandoning this claim…"></textarea>
+    <div id="modal-actions">
+      <button class="modal-btn" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn abandon" onclick="submitResponse('abandon')">✕ Abandon Claim</button>
+      <button class="modal-btn defend" onclick="submitResponse('defend')">✔ Defend</button>
+      <button class="modal-btn refine" onclick="submitResponse('refine')">↻ Refine Claim</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────────────────
+
+const state = {
+  nodes: [
+    {
+      id: 'C1', claim_type: 'E', claim_status: 'W',
+      title: 'CO₂ tax reduces transport emissions',
+      content: 'A CO₂ tax above €80/t reduces German transport sector CO₂ emissions by >15% in the period 2025–2035, relative to a no-tax baseline.',
+      x: 400, y: 220,
+      assumptions: ['Price elasticity holds across vehicle classes', 'No major EV subsidy program displaces effect'],
+      selected: false, underAttack: false, attacked: false,
+      deps: ['C2','C3','C4','C5']
+    },
+    {
+      id: 'C2', claim_type: 'E', claim_status: 'W',
+      title: 'Price elasticity of fuel demand: −0.3',
+      content: 'Meta-analysis of European fuel demand studies (2010–2022) yields a long-run price elasticity of −0.3 for private transport fuel.',
+      x: 155, y: 140,
+      assumptions: ['Studies are generalizable to Germany 2025+', 'No structural behavioral shifts post-pandemic'],
+      selected: false, underAttack: false, attacked: false,
+      deps: []
+    },
+    {
+      id: 'C3', claim_type: 'L', claim_status: 'S',
+      title: '30% price increase → ~9% demand reduction',
+      content: 'Given elasticity −0.3, a CO₂ tax producing a 30% price increase implies approximately 9% reduction in fuel demand (linear approximation).',
+      x: 155, y: 340,
+      assumptions: ['Linearity holds in the relevant price range'],
+      selected: false, underAttack: false, attacked: false,
+      deps: ['C2']
+    },
+    {
+      id: 'C4', claim_type: 'N', claim_status: 'U',
+      title: 'CO₂ tax is normatively justified',
+      content: 'Internalizing negative externalities of fossil fuel use constitutes a Pigouvian correction and is normatively defensible under standard welfare economics.',
+      x: 645, y: 140,
+      assumptions: ['Welfare economics provides adequate normative framework', 'Distributional effects are separately addressed'],
+      selected: false, underAttack: false, attacked: false,
+      deps: []
+    },
+    {
+      id: 'C5', claim_type: 'O', claim_status: 'W',
+      title: 'Tax is administratively implementable',
+      content: 'The EU ETS extension to road transport and BEHG mechanisms provide sufficient administrative infrastructure for implementation by 2025.',
+      x: 645, y: 340,
+      assumptions: ['EU ETS extension proceeds as legislated', 'Political will remains stable through 2025'],
+      selected: false, underAttack: false, attacked: false,
+      deps: []
+    }
+  ],
+  edges: [
+    { id: 'E1', from: 'C2', to: 'C1', type: 'supports', label: 'grounds' },
+    { id: 'E2', from: 'C3', to: 'C1', type: 'supports', label: 'quantifies' },
+    { id: 'E3', from: 'C3', to: 'C2', type: 'requires', label: 'depends' },
+    { id: 'E4', from: 'C4', to: 'C1', type: 'supports', label: 'justifies' },
+    { id: 'E5', from: 'C5', to: 'C1', type: 'supports', label: 'enables' }
+  ],
+  scaffold: [
+    { id: 'guiding-q', label: 'Guiding Question', icon: '❓', status: 'ok', content: 'Can a CO₂ tax above €80/t achieve >15% transport emission reduction in Germany 2025–2035?' },
+    { id: 'scope', label: 'Scope', icon: '◎', status: 'ok', content: 'Germany, road transport, 2025–2035, private + commercial vehicles, price effects only.' },
+    { id: 'assumptions', label: 'Assumptions', icon: '⊕', status: 'ok', content: '3 explicit assumptions registered.' },
+    { id: 'concepts', label: 'Concept Definitions', icon: '📖', status: 'ok', content: 'CO₂-tax, BEHG, price elasticity, long-run vs short-run, baseline scenario.' },
+    { id: 'claim-net', label: 'Claim Network', icon: '⬡', status: 'ok', content: '5 claims, 5 typed edges, full dependency graph.' },
+    { id: 'tests', label: 'Tests / Counter-Examples', icon: '⚡', status: 'warn', content: 'Counterexample: Swiss carbon levy underperformed expected elasticity by 40%. Not yet integrated.' },
+    { id: 'uncertainty', label: 'Uncertainty Zones', icon: '≈', status: 'err', content: 'MISSING: Uncertainty zone module not completed. Required for submission.' },
+    { id: 'synthesis', label: 'Synthesis / Decision', icon: '◈', status: 'err', content: 'MISSING: No synthesis block. Required for submission.' }
+  ],
+  deltaLog: [
+    { ts: '09:14', actor: 'user', desc: 'Blueprint initialized', ref: 'Scaffold v1' },
+    { ts: '09:22', actor: 'user', desc: 'C2 added: price elasticity −0.3 from meta-analysis', ref: 'C2 → W' },
+    { ts: '09:31', actor: 'user', desc: 'C3 derived logically from C2', ref: 'C3 → S' },
+    { ts: '09:45', actor: 'ai', desc: 'Precision check: C3 linearity assumption flagged as potentially invalid above 50% price increase', ref: 'AI:precision → warning' },
+    { ts: '10:02', actor: 'user', desc: 'C4 added: normative justification via Pigouvian theory', ref: 'C4 → U (contested)' },
+    { ts: '10:18', actor: 'user', desc: 'C5 added: BEHG implementation pathway confirmed', ref: 'C5 → W' },
+    { ts: '10:35', actor: 'ai', desc: 'Exploration: 3 alternative causal pathways identified for C1 (modal shift, fleet renewal, behavioral)', ref: 'AI:explore → C1' },
+    { ts: '11:05', actor: 'user', desc: 'Scope narrowed: modal shift effects excluded, price effects only', ref: 'Scope v2' }
+  ],
+  attacks: [],
+  aiMode: null,
+  selectedNode: null,
+  currentAttack: null,
+  dragNode: null,
+  dragOffX: 0,
+  dragOffY: 0,
+  svgRect: null
+};
+
+const ATTACK_SCRIPTS = {
+  'C1': {
+    vector: 'scope_drift',
+    label: 'Scope Drift',
+    text: 'SCOPE DRIFT DETECTED: Your central claim relies on a 15% reduction threshold. The referenced elasticity data (C2) derives from pre-2020 Nordic country studies with significantly different infrastructure constraints. German transport has uniquely high long-haul freight dependence (≈38% of fuel use) with near-zero short-run elasticity. Your claim scope does not distinguish passenger vs. freight, rendering the >15% threshold epistemically unsupported by your evidence base.'
+  },
+  'C2': {
+    vector: 'weak_evidence',
+    label: 'Weak Evidence',
+    text: 'WEAK EVIDENCE: The meta-analysis claim (−0.3 elasticity) aggregates studies from 2010–2022 across heterogeneous European markets. Post-pandemic behavioral shifts (remote work, modal change, electrification uptake) create structural breaks not captured in your historical data. You need at least one post-2021 study or a structural argument for why pre-pandemic elasticities remain valid. Without this, W-status may not be warranted — consider downgrading to U.'
+  },
+  'C3': {
+    vector: 'hidden_assumption',
+    label: 'Hidden Assumption',
+    text: 'HIDDEN ASSUMPTION: C3 applies a linear approximation (elasticity × Δprice = Δdemand). This is only valid for small price changes. A CO₂ tax producing a 30% price increase is NOT a marginal change. Non-linear demand curves, saturation effects, and threshold behaviors (e.g. EV switching at fuel price X) are suppressed by this approximation. Your logical claim C3 is formally valid only under conditions not explicitly stated. This constitutes a hidden assumption that must be made explicit.'
+  },
+  'C4': {
+    vector: 'normative_smuggle',
+    label: 'Normative Smuggling',
+    text: 'NORMATIVE SMUGGLING: C4 presents Pigouvian theory as delivering normative justification "under standard welfare economics." This presupposes: (a) aggregate welfare maximization as the correct normative framework, (b) that distributional effects are "separately addressed" without specifying by whom or how, and (c) that the correct discount rate for future climate damage is uncontested. Each of these is a substantive normative commitment, not a technical fact. You are smuggling contested value assumptions inside an apparently technical argument. Status U is appropriate but the assumptions must be made explicit.'
+  },
+  'C5': {
+    vector: 'scope_drift',
+    label: 'Implementation Gap',
+    text: 'IMPLEMENTATION GAP: C5 claims the BEHG mechanism provides "sufficient administrative infrastructure." However, BEHG coverage of road transport was contested in 2023 coalition negotiations and remains subject to legislative revision. Your claim treats a politically contingent institutional arrangement as a stable operative fact. The assumption "EU ETS extension proceeds as legislated" carries more uncertainty than W-status reflects. Additionally, implementation capacity at the local enforcement level (fuel stations, importers) has not been assessed.'
+  }
+};
+
+const STATUS_LABELS = { S: 'Secure', W: 'Probable', U: 'Uncertain', X: 'Collapsed' };
+const TYPE_LABELS = { E: 'Empirical', L: 'Logical', N: 'Normative', O: 'Operative', H: 'Hypothetical' };
+const STATUS_COLORS = { S: '#3fb950', W: '#e3b341', U: '#f0883e', X: '#f85149' };
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+function init() {
+  renderScaffold();
+  renderDeltaLog();
+  renderGraph();
+  updateValidationBar();
+  window.addEventListener('resize', () => renderGraph());
+}
+
+// ── Scaffold ──────────────────────────────────────────────────────────────
+
+function renderScaffold() {
+  const el = document.getElementById('scaffold-list');
+  el.innerHTML = '';
+  state.scaffold.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'scaffold-item' + (i === 4 ? ' active' : '');
+    div.onclick = () => {
+      document.querySelectorAll('.scaffold-item').forEach(d => d.classList.remove('active'));
+      div.classList.add('active');
+      if (item.id === 'claim-net') {
+        closeDetail();
+      }
+    };
+    const colors = { ok: '#1f6feb', warn: '#d29922', err: '#f85149' };
+    div.innerHTML = `
+      <div class="scaffold-icon" style="background:rgba(0,0,0,0.3);color:${colors[item.status]}">${item.icon}</div>
+      <span class="scaffold-label">${item.label}</span>
+      <div class="scaffold-status s-${item.status}"></div>
+    `;
+    div.title = item.content;
+    el.appendChild(div);
+  });
+}
+
+// ── Delta Log ─────────────────────────────────────────────────────────────
+
+function addDeltaEntry(actor, desc, ref) {
+  const now = new Date();
+  const ts = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  state.deltaLog.push({ ts, actor, desc, ref });
+  renderDeltaLog();
+}
+
+function renderDeltaLog() {
+  const el = document.getElementById('delta-entries');
+  el.innerHTML = '';
+  [...state.deltaLog].reverse().forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'delta-entry';
+    div.innerHTML = `
+      <div><span class="delta-time">${entry.ts}</span>
+      <span class="delta-actor actor-${entry.actor}">${entry.actor.toUpperCase()}</span></div>
+      <div class="delta-desc">${entry.desc}</div>
+      <div class="delta-ref">${entry.ref}</div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+// ── Graph Rendering ───────────────────────────────────────────────────────
+
+function getNode(id) { return state.nodes.find(n => n.id === id); }
+
+function nodeShapePoints(node, svg) {
+  const cx = node.x, cy = node.y;
+  const R = 46;
+  switch (node.claim_type) {
+    case 'E': return { shape: 'circle', cx, cy, r: R };
+    case 'L': {
+      const pts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI / 180 * (60 * i - 30);
+        pts.push([cx + R * Math.cos(a), cy + R * Math.sin(a)]);
+      }
+      return { shape: 'polygon', points: pts.map(p => p.join(',')).join(' ') };
+    }
+    case 'N': {
+      const h = R * 1.1;
+      return { shape: 'polygon', points: `${cx},${cy - h} ${cx + h},${cy + h * 0.6} ${cx - h},${cy + h * 0.6}` };
+    }
+    case 'O': return { shape: 'rect', x: cx - R, y: cy - R * 0.65, w: R * 2, h: R * 1.3, rx: 5 };
+    case 'H': return { shape: 'circle', cx, cy, r: R, dashed: true };
+    default: return { shape: 'circle', cx, cy, r: R };
+  }
+}
+
+function edgeEndpoints(fromNode, toNode) {
+  const dx = toNode.x - fromNode.x;
+  const dy = toNode.y - fromNode.y;
+  const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+  const ux = dx/dist, uy = dy/dist;
+  const fromR = 50, toR = 52;
+  return {
+    x1: fromNode.x + ux * fromR,
+    y1: fromNode.y + uy * fromR,
+    x2: toNode.x - ux * toR,
+    y2: toNode.y - uy * toR
+  };
+}
+
+function renderGraph() {
+  const svg = document.getElementById('graph-svg');
+  const wrap = document.getElementById('arena-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  // Scale node positions to current viewport
+  const edgesEl = document.getElementById('edges-layer');
+  const nodesEl = document.getElementById('nodes-layer');
+  edgesEl.innerHTML = '';
+  nodesEl.innerHTML = '';
+
+  // Position nodes relative to viewport size
+  const scaleX = W / 800, scaleY = H / 500;
+  const posX = id => {
+    const base = { C1: 400, C2: 155, C3: 155, C4: 645, C5: 645 };
+    return (state.nodes.find(n=>n.id===id)?.x || base[id] || 400);
+  };
+
+  // Draw edges first
+  state.edges.forEach(edge => {
+    const from = getNode(edge.from), to = getNode(edge.to);
+    if (!from || !to) return;
+    const ep = edgeEndpoints(from, to);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', ep.x1); line.setAttribute('y1', ep.y1);
+    line.setAttribute('x2', ep.x2); line.setAttribute('y2', ep.y2);
+    line.setAttribute('class', `edge-line edge-${edge.type}`);
+    edgesEl.appendChild(line);
+
+    // Edge label
+    const lx = (ep.x1 + ep.x2) / 2, ly = (ep.y1 + ep.y2) / 2;
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', lx); text.setAttribute('y', ly - 5);
+    text.setAttribute('class', 'edge-label');
+    text.textContent = edge.label || edge.type;
+    edgesEl.appendChild(text);
+  });
+
+  // Draw nodes
+  state.nodes.forEach(node => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'node-group');
+    g.style.cursor = 'pointer';
+
+    const shapeInfo = nodeShapePoints(node);
+    let shape;
+
+    if (shapeInfo.shape === 'circle') {
+      shape = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      shape.setAttribute('cx', shapeInfo.cx);
+      shape.setAttribute('cy', shapeInfo.cy);
+      shape.setAttribute('r', shapeInfo.r);
+      if (shapeInfo.dashed) shape.setAttribute('stroke-dasharray', '6 4');
+    } else if (shapeInfo.shape === 'polygon') {
+      shape = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      shape.setAttribute('points', shapeInfo.points);
+    } else if (shapeInfo.shape === 'rect') {
+      shape = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      shape.setAttribute('x', shapeInfo.x); shape.setAttribute('y', shapeInfo.y);
+      shape.setAttribute('width', shapeInfo.w); shape.setAttribute('height', shapeInfo.h);
+      shape.setAttribute('rx', shapeInfo.rx);
+    }
+
+    shape.setAttribute('class', `node-shape status-${node.claim_status}${node.selected ? ' selected' : ''}${node.underAttack ? ' under-attack' : ''}`);
+    g.appendChild(shape);
+
+    // Node ID label
+    const idText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    idText.setAttribute('x', node.x); idText.setAttribute('y', node.y - 14);
+    idText.setAttribute('class', 'node-id');
+    idText.textContent = node.id;
+    g.appendChild(idText);
+
+    // Node title (wrapped, 2 lines max)
+    const words = node.title.split(' ');
+    let line1 = '', line2 = '';
+    const maxLen = 16;
+    for (let w of words) {
+      if ((line1 + ' ' + w).trim().length <= maxLen) { line1 = (line1 + ' ' + w).trim(); }
+      else if (!line2) { line2 = w; }
+      else { line2 += ' ' + w; }
+    }
+    const t1 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t1.setAttribute('x', node.x); t1.setAttribute('y', node.y + (line2 ? 2 : 8));
+    t1.setAttribute('class', 'node-label');
+    t1.textContent = line1;
+    g.appendChild(t1);
+    if (line2) {
+      const t2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t2.setAttribute('x', node.x); t2.setAttribute('y', node.y + 16);
+      t2.setAttribute('class', 'node-label');
+      t2.textContent = line2.length > 18 ? line2.substring(0,17)+'…' : line2;
+      g.appendChild(t2);
+    }
+
+    // Status dot
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', node.x + 34); dot.setAttribute('cy', node.y - 30);
+    dot.setAttribute('r', 6);
+    dot.setAttribute('fill', STATUS_COLORS[node.claim_status]);
+    dot.setAttribute('stroke', '#0d1117');
+    dot.setAttribute('stroke-width', '2');
+    g.appendChild(dot);
+
+    // Status letter
+    const sl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    sl.setAttribute('x', node.x + 34); sl.setAttribute('y', node.y - 30);
+    sl.setAttribute('class', 'node-id');
+    sl.setAttribute('font-size', '8');
+    sl.textContent = node.claim_status;
+    g.appendChild(sl);
+
+    // Attack indicator
+    if (node.underAttack) {
+      const warn = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      warn.setAttribute('x', node.x - 34); warn.setAttribute('y', node.y - 30);
+      warn.setAttribute('font-size', '16'); warn.setAttribute('text-anchor', 'middle');
+      warn.textContent = '⚔';
+      g.appendChild(warn);
+    }
+
+    // Drag events
+    g.addEventListener('mousedown', e => startDrag(e, node));
+    g.addEventListener('click', e => { e.stopPropagation(); selectNode(node.id); });
+
+    // Tooltip
+    g.addEventListener('mousemove', e => showTooltip(e, node));
+    g.addEventListener('mouseleave', () => hideTooltip());
+
+    nodesEl.appendChild(g);
+  });
+}
+
+function showTooltip(e, node) {
+  const tip = document.getElementById('tooltip');
+  tip.style.display = 'block';
+  tip.style.left = (e.clientX + 14) + 'px';
+  tip.style.top = (e.clientY - 10) + 'px';
+  tip.innerHTML = `<strong>${node.id}: ${node.claim_type}-type</strong><br>Status: ${STATUS_LABELS[node.claim_status]}<br>${node.title}`;
+}
+function hideTooltip() {
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+// ── Drag ─────────────────────────────────────────────────────────────────
+
+function startDrag(e, node) {
+  e.preventDefault();
+  state.dragNode = node;
+  state.svgRect = document.getElementById('graph-svg').getBoundingClientRect();
+  state.dragOffX = e.clientX - state.svgRect.left - node.x;
+  state.dragOffY = e.clientY - state.svgRect.top - node.y;
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+}
+
+function onMouseMove(e) {
+  if (!state.dragNode) return;
+  const svg = document.getElementById('graph-svg');
+  const rect = svg.getBoundingClientRect();
+  const vb = svg.getAttribute('viewBox').split(' ').map(Number);
+  const scaleX = vb[2] / rect.width;
+  const scaleY = vb[3] / rect.height;
+  state.dragNode.x = (e.clientX - rect.left) * scaleX - state.dragOffX * scaleX;
+  state.dragNode.y = (e.clientY - rect.top) * scaleY - state.dragOffY * scaleY;
+  renderGraph();
+  if (state.selectedNode === state.dragNode.id) updateDetailPosition();
+}
+
+function onMouseUp() {
+  state.dragNode = null;
+  document.removeEventListener('mousemove', onMouseMove);
+  document.removeEventListener('mouseup', onMouseUp);
+}
+
+// ── Node Selection ────────────────────────────────────────────────────────
+
+function selectNode(id) {
+  state.nodes.forEach(n => n.selected = (n.id === id));
+  state.selectedNode = id;
+  renderGraph();
+  showNodeDetail(id);
+  if (state.aiMode) triggerAI(id, state.aiMode);
+}
+
+function showNodeDetail(id) {
+  const node = getNode(id);
+  if (!node) return;
+  const panel = document.getElementById('node-detail');
+  panel.style.display = 'block';
+
+  const statusColor = STATUS_COLORS[node.claim_status];
+  document.getElementById('node-detail-meta').innerHTML = `
+    <span class="tag" style="border-color:${statusColor};color:${statusColor}">${node.claim_status} — ${STATUS_LABELS[node.claim_status]}</span>
+    <span class="tag" style="border-color:var(--border);color:var(--text2)">${node.claim_type} — ${TYPE_LABELS[node.claim_type]}</span>
+    <span class="tag" style="border-color:var(--border);color:var(--text2)">${node.id}</span>
+  `;
+  document.getElementById('node-detail-title').textContent = node.title;
+  document.getElementById('node-detail-content').textContent = node.content;
+
+  const actions = document.getElementById('node-detail-actions');
+  actions.innerHTML = '';
+
+  const mkBtn = (label, cls, onclick) => {
+    const b = document.createElement('button');
+    b.className = 'action-btn' + (cls ? ' ' + cls : '');
+    b.textContent = label;
+    b.onclick = onclick;
+    actions.appendChild(b);
+  };
+
+  mkBtn('⚔ Launch AI Attack', '', () => launchAttack(id));
+  if (node.claim_status !== 'S') mkBtn('↑ Upgrade Status', '', () => upgradeStatus(id));
+  if (node.claim_status !== 'X') mkBtn('↓ Downgrade Status', '', () => downgradeStatus(id));
+  mkBtn('✕ Abandon', 'danger', () => abandonNode(id));
+}
+
+function closeDetail() {
+  document.getElementById('node-detail').style.display = 'none';
+  state.nodes.forEach(n => n.selected = false);
+  state.selectedNode = null;
+  renderGraph();
+}
+
+function updateDetailPosition() {
+  // Detail drawer is fixed at bottom, no position update needed
+}
+
+// ── Status Management ─────────────────────────────────────────────────────
+
+const STATUS_ORDER = ['S', 'W', 'U', 'X'];
+
+function upgradeStatus(id) {
+  const node = getNode(id);
+  const idx = STATUS_ORDER.indexOf(node.claim_status);
+  if (idx > 0) {
+    const prev = node.claim_status;
+    node.claim_status = STATUS_ORDER[idx - 1];
+    addDeltaEntry('user', `${id} status upgraded`, `${prev} → ${node.claim_status}`);
+    renderGraph();
+    showNodeDetail(id);
+    updateValidationBar();
+  }
+}
+
+function downgradeStatus(id) {
+  const node = getNode(id);
+  const idx = STATUS_ORDER.indexOf(node.claim_status);
+  if (idx < STATUS_ORDER.length - 1) {
+    const prev = node.claim_status;
+    node.claim_status = STATUS_ORDER[idx + 1];
+    addDeltaEntry('user', `${id} status downgraded`, `${prev} → ${node.claim_status}`);
+    renderGraph();
+    showNodeDetail(id);
+    updateValidationBar();
+  }
+}
+
+function abandonNode(id) {
+  const node = getNode(id);
+  if (node.claim_status !== 'X') {
+    node.claim_status = 'X';
+    node.underAttack = false;
+    addDeltaEntry('user', `${id} ABANDONED — claim collapsed`, `→ X (Collapsed)`);
+    cascadeFrom(id);
+    renderGraph();
+    showNodeDetail(id);
+    updateValidationBar();
+  }
+}
+
+function cascadeFrom(id) {
+  // Downgrade claims that depend on the collapsed node
+  state.nodes.forEach(node => {
+    if (node.deps && node.deps.includes(id) && node.claim_status === 'S') {
+      node.claim_status = 'W';
+      addDeltaEntry('ai', `CASCADE: ${node.id} downgraded due to collapse of ${id}`, `S → W (automatic)`);
+    } else if (node.deps && node.deps.includes(id) && node.claim_status === 'W') {
+      node.claim_status = 'U';
+      addDeltaEntry('ai', `CASCADE: ${node.id} uncertain due to collapse of ${id}`, `W → U (automatic)`);
+    }
+  });
+}
+
+// ── AI Modes ──────────────────────────────────────────────────────────────
+
+function setAIMode(mode) {
+  state.aiMode = mode;
+  ['explore','precision','adversarial'].forEach(m => {
+    document.getElementById('btn-' + m).classList.toggle('active', m === mode);
+  });
+  const output = document.getElementById('ai-output');
+  if (!state.selectedNode) {
+    output.innerHTML = `<div class="ai-system">Mode: <strong>${mode}</strong>. Select a node in the graph to apply.</div>`;
+    return;
+  }
+  triggerAI(state.selectedNode, mode);
+}
+
+function triggerAI(nodeId, mode) {
+  const node = getNode(nodeId);
+  const output = document.getElementById('ai-output');
+
+  if (mode === 'explore') {
+    output.innerHTML = `<div class="ai-explore">
+      <strong>⚡ Explore — ${nodeId}</strong><br><br>
+      Three alternative framings for "${node.title}":<br><br>
+      <strong>1. Modal shift pathway:</strong> Price signal may primarily induce shifts to public transport rather than absolute demand reduction — distinct effect from elasticity model.<br><br>
+      <strong>2. Fleet renewal pathway:</strong> Tax creates incentive for accelerated EV adoption; emission reduction via fleet composition change rather than demand reduction.<br><br>
+      <strong>3. Behavioral habituation:</strong> Literature shows initial elastic response often decays within 18–24 months. Long-run elasticity may differ from meta-analytic estimate.
+    </div>`;
+    addDeltaEntry('ai', `Explore: 3 alternative pathways generated for ${nodeId}`, `AI:explore → ${nodeId}`);
+  } else if (mode === 'precision') {
+    output.innerHTML = `<div class="ai-precision">
+      <strong>🎯 Precision Check — ${nodeId}</strong><br><br>
+      Consistency analysis complete:<br><br>
+      ${node.claim_type === 'L' ? '⚠ Logical claim uses linear approximation. Valid only for |Δp| &lt; 20%. Your scenario assumes 30%+ increase — outside valid range.' :
+        node.claim_type === 'E' ? '✓ Empirical claim has data backing. ⚠ Check: publication bias in meta-analyses of elasticity studies documented (Havranek et al. 2018).' :
+        node.claim_type === 'N' ? '⚠ Normative claim mixes descriptive and prescriptive language. "Defensible under standard welfare economics" occludes contested distributional assumptions.' :
+        '✓ Operative claim references verifiable institutional structures. ⚠ Political contingency not reflected in status W.'}
+      <br><br>Recommendation: ${node.claim_status === 'W' ? 'Consider whether U-status is more appropriate given identified gaps.' : 'Status appears calibrated to evidence base.'}
+    </div>`;
+    addDeltaEntry('ai', `Precision check completed for ${nodeId}`, `AI:precision → ${nodeId}`);
+  } else if (mode === 'adversarial') {
+    launchAttack(nodeId);
+  }
+}
+
+// ── AI Attacks ────────────────────────────────────────────────────────────
+
+let attackIdCounter = 0;
+
+function launchAttack(nodeId) {
+  const script = ATTACK_SCRIPTS[nodeId];
+  if (!script) {
+    document.getElementById('ai-output').innerHTML = `<div class="ai-system">No attack script for ${nodeId}.</div>`;
+    return;
+  }
+
+  const attackId = 'ATK-' + (++attackIdCounter);
+  const node = getNode(nodeId);
+  node.underAttack = true;
+
+  const attack = { id: attackId, nodeId, vector: script.vector, label: script.label, text: script.text, resolved: false };
+  state.attacks.push(attack);
+
+  document.getElementById('ai-output').innerHTML = `
+    <div class="ai-label">⚔ ${script.label}</div>
+    <div class="ai-attack">${script.text}</div>
+  `;
+
+  addDeltaEntry('ai', `Adversarial attack launched on ${nodeId}: ${script.label}`, `${attackId} → PENDING`);
+  renderGraph();
+  renderAttackList();
+  updateValidationBar();
+
+  // Show attack card in list
+  const attackList = document.getElementById('attack-list');
+  const card = document.createElement('div');
+  card.className = 'attack-card';
+  card.id = 'card-' + attackId;
+  card.innerHTML = `
+    <div class="attack-card-label">⚔ ${script.label}</div>
+    <div class="attack-card-text">${script.text.substring(0, 120)}…</div>
+    <div class="attack-card-node">${nodeId} · Click to respond</div>
+  `;
+  card.onclick = () => openResponseModal(attackId);
+  attackList.prepend(card);
+}
+
+function renderAttackList() {
+  // Already handled inline above
+}
+
+function openResponseModal(attackId) {
+  const attack = state.attacks.find(a => a.id === attackId);
+  if (!attack || attack.resolved) return;
+  state.currentAttack = attackId;
+
+  document.getElementById('modal-title').textContent = `Respond to Attack — ${attack.nodeId}`;
+  document.getElementById('modal-sub').textContent = `${attack.id} · Vector: ${attack.label} · Claim: ${getNode(attack.nodeId)?.title}`;
+  document.getElementById('modal-attack-text').textContent = attack.text;
+  document.getElementById('modal-response-area').value = '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  state.currentAttack = null;
+}
+
+function submitResponse(action) {
+  const response = document.getElementById('modal-response-area').value.trim();
+  if (!response && action !== 'abandon') {
+    document.getElementById('modal-response-area').placeholder = 'Response required before submitting.';
+    document.getElementById('modal-response-area').style.borderColor = 'var(--red)';
+    setTimeout(() => { document.getElementById('modal-response-area').style.borderColor = ''; }, 2000);
+    return;
+  }
+
+  const attackId = state.currentAttack;
+  const attack = state.attacks.find(a => a.id === attackId);
+  if (!attack) return;
+
+  attack.resolved = true;
+  attack.action = action;
+  attack.response = response;
+
+  const node = getNode(attack.nodeId);
+  node.underAttack = false;
+  node.attacked = true;
+
+  const actionLabels = { refine: 'REFINED', defend: 'DEFENDED', abandon: 'ABANDONED' };
+
+  if (action === 'refine') {
+    const idx = STATUS_ORDER.indexOf(node.claim_status);
+    if (idx < STATUS_ORDER.length - 1) {
+      node.claim_status = STATUS_ORDER[idx + 1];
+    }
+    addDeltaEntry('user', `${attack.nodeId} refined after attack ${attackId}`, `${actionLabels[action]} — status adjusted`);
+  } else if (action === 'abandon') {
+    abandonNode(attack.nodeId);
+  } else {
+    addDeltaEntry('user', `${attack.nodeId} defended against ${attackId}`, `${actionLabels[action]} — status maintained`);
+  }
+
+  // Remove attack card
+  const card = document.getElementById('card-' + attackId);
+  if (card) card.remove();
+
+  closeModal();
+  renderGraph();
+  updateValidationBar();
+}
+
+// ── Validation Bar ────────────────────────────────────────────────────────
+
+function updateValidationBar() {
+  const errScaffold = state.scaffold.filter(s => s.status === 'err').length;
+  const warnScaffold = state.scaffold.filter(s => s.status === 'warn').length;
+  const collapsedNodes = state.nodes.filter(n => n.claim_status === 'X').length;
+  const pendingAttacks = state.attacks.filter(a => !a.resolved).length;
+
+  const totalErrors = errScaffold + collapsedNodes;
+  const totalWarnings = warnScaffold;
+
+  document.getElementById('val-errors').textContent = totalErrors;
+  document.getElementById('val-warnings').textContent = totalWarnings;
+  document.getElementById('val-attacks').textContent = pendingAttacks;
+
+  const compiler = document.getElementById('val-compiler');
+  if (totalErrors === 0 && pendingAttacks === 0) {
+    compiler.className = 'val-ok';
+    compiler.textContent = '✓ COMPILER: VALID';
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('status-badge').textContent = '✓ Valid';
+    document.getElementById('status-badge').style.borderColor = 'var(--s-secure-fg)';
+    document.getElementById('status-badge').style.color = 'var(--s-secure-fg)';
+    document.getElementById('status-badge').style.background = 'rgba(35,134,54,0.15)';
+  } else if (totalErrors > 0) {
+    compiler.className = 'val-err';
+    compiler.textContent = `⛔ COMPILER: ${totalErrors} ERROR${totalErrors > 1 ? 'S' : ''}`;
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('status-badge').textContent = '⚠ Under Review';
+    document.getElementById('status-badge').style.borderColor = 'var(--s-probable)';
+    document.getElementById('status-badge').style.color = 'var(--s-probable-fg)';
+    document.getElementById('status-badge').style.background = 'rgba(158,106,3,0.15)';
+  } else {
+    compiler.className = 'val-warn';
+    compiler.textContent = `⚠ COMPILER: ${pendingAttacks} PENDING`;
+    document.getElementById('submit-btn').disabled = true;
+  }
+
+  const okCount = state.scaffold.filter(s => s.status === 'ok').length;
+  const pct = Math.round((okCount / state.scaffold.length) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = `${okCount}/${state.scaffold.length}`;
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────
+
+function submitBlueprint() {
+  addDeltaEntry('user', 'Blueprint submitted for assessment', 'Certification pipeline → PENDING');
+  alert('Blueprint submitted successfully.\n\nThe epistemic compiler has certified structural validity. Your blueprint enters the assessment queue.\n\nReference: BP-2025-CO2-DE-v' + (state.deltaLog.length) + '\n\nActor: H.-S. Rentschler\nTimestamp: ' + new Date().toISOString());
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+
+function exportJSON() {
+  const data = {
+    blueprint_id: 'BP-2025-CO2-DE',
+    title: 'CO₂ Tax Effectiveness — Transport Sector Germany 2025–2035',
+    version: 'v' + state.deltaLog.length,
+    exported_at: new Date().toISOString(),
+    protocol: 'Blueprint Protocol v1.0',
+    guiding_question: state.scaffold[0].content,
+    scope: state.scaffold[1].content,
+    claims: state.nodes.map(n => ({
+      id: n.id,
+      claim_type: n.claim_type,
+      claim_type_full: TYPE_LABELS[n.claim_type],
+      epistemic_status: n.claim_status,
+      epistemic_status_full: STATUS_LABELS[n.claim_status],
+      title: n.title,
+      content: n.content,
+      assumptions: n.assumptions,
+      dependencies: n.deps,
+      under_attack: n.underAttack,
+      attacked: n.attacked
+    })),
+    edges: state.edges,
+    attacks: state.attacks,
+    delta_log: state.deltaLog,
+    validation: {
+      scaffold_errors: state.scaffold.filter(s => s.status === 'err').length,
+      scaffold_warnings: state.scaffold.filter(s => s.status === 'warn').length,
+      unresolved_attacks: state.attacks.filter(a => !a.resolved).length,
+      collapsed_claims: state.nodes.filter(n => n.claim_status === 'X').length
+    }
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'blueprint-co2-tax-de.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  addDeltaEntry('user', 'Blueprint exported as JSON', 'blueprint-co2-tax-de.json');
+}
+
+// ── Click outside to deselect ─────────────────────────────────────────────
+
+document.getElementById('graph-svg').addEventListener('click', e => {
+  if (e.target === document.getElementById('graph-svg') || e.target.tagName === 'svg') {
+    closeDetail();
+  }
+});
+
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+
+init();
+</script>
+</body>
+</html>
