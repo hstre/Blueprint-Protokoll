@@ -494,6 +494,64 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: #484f58; }
 
+  /* ── Scaffold / Claim / Edge Modals ── */
+  #scaffold-modal-overlay, #claim-modal-overlay, #edge-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #scaffold-modal-overlay.open, #claim-modal-overlay.open, #edge-modal-overlay.open {
+    display: flex;
+    animation: fadeInBg 0.2s ease;
+  }
+  #scaffold-modal-box, #claim-modal-box, #edge-modal-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 560px;
+    max-width: 92vw;
+    padding: 24px;
+    animation: popIn 0.2s ease;
+  }
+  #scaffold-modal-box h3, #claim-modal-box h3, #edge-modal-box h3 { font-size: 15px; margin-bottom: 6px; }
+  .modal-subtitle { font-size: 12px; color: var(--text2); margin-bottom: 16px; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
+  .modal-field input[type="text"], .modal-field textarea, .modal-field select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 8px 10px;
+    font-family: inherit;
+  }
+  .modal-field input:focus, .modal-field textarea:focus, .modal-field select:focus { outline: none; border-color: var(--blue); }
+  .modal-field textarea { resize: vertical; min-height: 60px; }
+  .modal-field select { cursor: pointer; }
+  .modal-row { display: flex; gap: 10px; }
+  .modal-row .modal-field { flex: 1; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+  /* Edge connect banner */
+  #edge-mode-banner {
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    background: rgba(31,111,235,0.92); color: #fff;
+    padding: 5px 16px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    z-index: 20; display: none; white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  #graph-svg.edge-connect-mode { cursor: crosshair; }
+  #graph-svg.edge-connect-mode .node-shape { cursor: crosshair; }
+
+  /* Scaffold items are clickable */
+  .scaffold-item { cursor: pointer; }
+
   /* Tooltip */
   #tooltip {
     position: fixed;
@@ -593,12 +651,14 @@
     <div id="arena-header">
       <strong>Epistemic Arena</strong>
       <span style="color:var(--border)">|</span>
-      <span>Claim graph · drag nodes · click to inspect</span>
+      <span>Drag nodes · click to inspect</span>
       <span style="flex:1"></span>
-      <div class="chip">5 claims</div>
-      <div class="chip">5 edges</div>
+      <div class="chip" id="chip-claims">5 claims</div>
+      <div class="chip" id="chip-edges">5 edges</div>
+      <button class="menu-btn" onclick="openAddClaim()" style="margin-left:6px">+ Claim</button>
     </div>
-    <div id="arena-wrap">
+    <div id="arena-wrap" style="position:relative">
+      <div id="edge-mode-banner">⟶ Click a target node to connect — Esc to cancel</div>
       <svg id="graph-svg" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <marker id="arrow-supports" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
@@ -677,6 +737,95 @@
       <button class="modal-btn abandon" onclick="submitResponse('abandon')">✕ Abandon Claim</button>
       <button class="modal-btn defend" onclick="submitResponse('defend')">✔ Defend</button>
       <button class="modal-btn refine" onclick="submitResponse('refine')">↻ Refine Claim</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scaffold Editor Modal -->
+<div id="scaffold-modal-overlay" onclick="if(event.target===this)closeScaffoldModal()">
+  <div id="scaffold-modal-box">
+    <h3 id="scaffold-modal-title">Edit Module</h3>
+    <div class="modal-subtitle" id="scaffold-modal-sub"></div>
+    <div class="modal-field">
+      <label>Content</label>
+      <textarea id="scaffold-modal-content" rows="5"></textarea>
+    </div>
+    <div id="scaffold-modal-extra"></div>
+    <div class="modal-footer">
+      <button class="modal-btn" onclick="closeScaffoldModal()">Cancel</button>
+      <button class="modal-btn refine" onclick="saveScaffoldEdit()">✔ Save Module</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Claim Modal -->
+<div id="claim-modal-overlay" onclick="if(event.target===this)closeClaimModal()">
+  <div id="claim-modal-box">
+    <h3 id="claim-modal-title">Add Claim</h3>
+    <div class="modal-subtitle" id="claim-modal-sub">Define a new epistemic claim for this blueprint.</div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Claim Type</label>
+        <select id="cm-type">
+          <option value="E">E — Empirical</option>
+          <option value="L">L — Logical</option>
+          <option value="N">N — Normative</option>
+          <option value="O">O — Operative</option>
+          <option value="H">H — Hypothetical</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Epistemic Status</label>
+        <select id="cm-status">
+          <option value="W">W — Probable</option>
+          <option value="S">S — Secure</option>
+          <option value="U">U — Uncertain</option>
+          <option value="X">X — Collapsed</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>Title <span style="color:var(--text2);font-weight:400">(short label, shown in graph)</span></label>
+      <input type="text" id="cm-title" placeholder="e.g. Modal shift reduces emissions" maxlength="80">
+    </div>
+    <div class="modal-field">
+      <label>Claim Content</label>
+      <textarea id="cm-content" rows="4" placeholder="State the claim precisely and completely…"></textarea>
+    </div>
+    <div class="modal-field">
+      <label>Assumptions <span style="color:var(--text2);font-weight:400">(one per line)</span></label>
+      <textarea id="cm-assumptions" rows="2" placeholder="e.g. Data is representative of current conditions"></textarea>
+    </div>
+    <input type="hidden" id="cm-edit-id">
+    <div class="modal-footer">
+      <button class="modal-btn" onclick="closeClaimModal()">Cancel</button>
+      <button class="modal-btn refine" id="claim-modal-submit-btn" onclick="submitClaimModal()">+ Add Claim</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edge Connect Modal -->
+<div id="edge-modal-overlay" onclick="if(event.target===this)cancelEdgeModal()">
+  <div id="edge-modal-box">
+    <h3>Add Edge</h3>
+    <div class="modal-subtitle">Connect <strong id="edge-from-label"></strong> → <strong id="edge-to-label"></strong></div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Relation Type</label>
+        <select id="edge-type-select">
+          <option value="supports">supports</option>
+          <option value="requires">requires</option>
+          <option value="contradicts">contradicts</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Label <span style="color:var(--text2);font-weight:400">(optional)</span></label>
+        <input type="text" id="edge-label-input" placeholder="e.g. grounds, implies, depends" maxlength="20">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn" onclick="cancelEdgeModal()">Cancel</button>
+      <button class="modal-btn refine" onclick="submitEdge()">⟶ Add Edge</button>
     </div>
   </div>
 </div>
@@ -771,7 +920,8 @@ const state = {
   dragNode: null,
   dragOffX: 0,
   dragOffY: 0,
-  svgRect: null
+  svgRect: null,
+  edgeConnectFrom: null
 };
 
 const ATTACK_SCRIPTS = {
@@ -813,6 +963,7 @@ function init() {
   renderDeltaLog();
   renderGraph();
   updateValidationBar();
+  updateArenaChips();
   window.addEventListener('resize', () => renderGraph());
 }
 
@@ -829,6 +980,8 @@ function renderScaffold() {
       div.classList.add('active');
       if (item.id === 'claim-net') {
         closeDetail();
+      } else {
+        openScaffoldEditor(item.id);
       }
     };
     const colors = { ok: '#1f6feb', warn: '#d29922', err: '#f85149' };
@@ -837,7 +990,7 @@ function renderScaffold() {
       <span class="scaffold-label">${item.label}</span>
       <div class="scaffold-status s-${item.status}"></div>
     `;
-    div.title = item.content;
+    div.title = item.status === 'err' ? '⚠ Click to complete this required module' : item.content;
     el.appendChild(div);
   });
 }
@@ -1087,6 +1240,21 @@ function onMouseUp() {
 // ── Node Selection ────────────────────────────────────────────────────────
 
 function selectNode(id) {
+  // Edge-connect mode: clicking a node completes the edge
+  if (state.edgeConnectFrom) {
+    if (id === state.edgeConnectFrom) { cancelEdgeConnect(); return; }
+    edgePendingTo = id;
+    const fromNode = getNode(state.edgeConnectFrom);
+    const toNode = getNode(id);
+    document.getElementById('edge-from-label').textContent =
+      `${state.edgeConnectFrom}: ${fromNode ? fromNode.title.substring(0,35) : ''}`;
+    document.getElementById('edge-to-label').textContent =
+      `${id}: ${toNode ? toNode.title.substring(0,35) : ''}`;
+    document.getElementById('edge-type-select').value = 'supports';
+    document.getElementById('edge-label-input').value = '';
+    document.getElementById('edge-modal-overlay').classList.add('open');
+    return;
+  }
   state.nodes.forEach(n => n.selected = (n.id === id));
   state.selectedNode = id;
   renderGraph();
@@ -1120,9 +1288,11 @@ function showNodeDetail(id) {
     actions.appendChild(b);
   };
 
-  mkBtn('⚔ Launch AI Attack', '', () => launchAttack(id));
-  if (node.claim_status !== 'S') mkBtn('↑ Upgrade Status', '', () => upgradeStatus(id));
-  if (node.claim_status !== 'X') mkBtn('↓ Downgrade Status', '', () => downgradeStatus(id));
+  mkBtn('✏ Edit', '', () => openEditClaim(id));
+  mkBtn('⟶ Connect', '', () => startEdgeConnect(id));
+  mkBtn('⚔ AI Attack', '', () => launchAttack(id));
+  if (node.claim_status !== 'S') mkBtn('↑ Upgrade', '', () => upgradeStatus(id));
+  if (node.claim_status !== 'X') mkBtn('↓ Downgrade', '', () => downgradeStatus(id));
   mkBtn('✕ Abandon', 'danger', () => abandonNode(id));
 }
 
@@ -1444,7 +1614,11 @@ function exportJSON() {
 
 document.getElementById('graph-svg').addEventListener('click', e => {
   if (e.target === document.getElementById('graph-svg') || e.target.tagName === 'svg') {
-    closeDetail();
+    if (state.edgeConnectFrom) {
+      cancelEdgeConnect();
+    } else {
+      closeDetail();
+    }
   }
 });
 
@@ -1452,9 +1626,252 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
 
-// ── Boot ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    cancelEdgeConnect();
+    closeScaffoldModal();
+    closeClaimModal();
+    cancelEdgeModal();
+  }
+});
 
-init();
+// ── Scaffold Editor ────────────────────────────────────────────────────────
+
+const SCAFFOLD_META = {
+  'guiding-q': { hint: 'The central question this blueprint addresses. Must be specific, falsifiable, and scoped.' },
+  'scope':     { hint: 'Define what is included and excluded: geography, time horizon, actors, phenomena.' },
+  'assumptions': { hint: 'List all background assumptions explicitly. Each assumption must be stated as a testable or revisable proposition.' },
+  'concepts':  { hint: 'Define all key terms used in your claims. Distinguish technical from everyday usage where relevant.' },
+  'claim-net': { hint: 'The claim network is managed in the Epistemic Arena (center panel). Add and connect claims there.' },
+  'tests':     { hint: 'Provide counter-examples, stress tests, and falsifying scenarios. Reference empirical cases that challenge your claims.' },
+  'uncertainty': { hint: 'Describe zones of genuine uncertainty: what you do not know, contested data, model limits, and unresolved disputes. This module is REQUIRED for submission.' },
+  'synthesis': { hint: 'State your final synthesis or decision. What conclusion follows from your claim network? Under what conditions would it be revised? This module is REQUIRED for submission.' }
+};
+
+let scaffoldEditId = null;
+
+function openScaffoldEditor(id) {
+  if (id === 'claim-net') return;
+  scaffoldEditId = id;
+  const item = state.scaffold.find(s => s.id === id);
+  const meta = SCAFFOLD_META[id] || {};
+  document.getElementById('scaffold-modal-title').textContent = item.label;
+  document.getElementById('scaffold-modal-sub').textContent = meta.hint || '';
+  document.getElementById('scaffold-modal-content').value = item.content;
+
+  const extra = document.getElementById('scaffold-modal-extra');
+  extra.innerHTML = '';
+
+  document.getElementById('scaffold-modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('scaffold-modal-content').focus(), 80);
+}
+
+function closeScaffoldModal() {
+  document.getElementById('scaffold-modal-overlay').classList.remove('open');
+  scaffoldEditId = null;
+}
+
+function saveScaffoldEdit() {
+  if (!scaffoldEditId) return;
+  const item = state.scaffold.find(s => s.id === scaffoldEditId);
+  const text = document.getElementById('scaffold-modal-content').value.trim();
+  if (!text) { alert('Content cannot be empty.'); return; }
+
+  const prev = item.content;
+  item.content = text;
+
+  // Auto-resolve status
+  if (item.status === 'err' || item.status === 'warn') {
+    item.status = 'ok';
+  }
+
+  addDeltaEntry('user', `Module "${item.label}" completed`, `${item.id}: err → ok`);
+  closeScaffoldModal();
+  renderScaffold();
+  updateValidationBar();
+}
+
+// ── Add / Edit Claim ───────────────────────────────────────────────────────
+
+let claimEditMode = false; // false = add, true = edit
+
+function openAddClaim() {
+  claimEditMode = false;
+  document.getElementById('claim-modal-title').textContent = 'Add Claim';
+  document.getElementById('claim-modal-sub').textContent = 'Define a new epistemic claim for this blueprint.';
+  document.getElementById('claim-modal-submit-btn').textContent = '+ Add Claim';
+  document.getElementById('cm-type').value = 'E';
+  document.getElementById('cm-status').value = 'W';
+  document.getElementById('cm-title').value = '';
+  document.getElementById('cm-content').value = '';
+  document.getElementById('cm-assumptions').value = '';
+  document.getElementById('cm-edit-id').value = '';
+  document.getElementById('claim-modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('cm-title').focus(), 80);
+}
+
+function openEditClaim(id) {
+  const node = getNode(id);
+  if (!node) return;
+  claimEditMode = true;
+  document.getElementById('claim-modal-title').textContent = 'Edit Claim ' + id;
+  document.getElementById('claim-modal-sub').textContent = 'Update the claim definition. Changes are recorded in the Δ-log.';
+  document.getElementById('claim-modal-submit-btn').textContent = '✔ Save Changes';
+  document.getElementById('cm-type').value = node.claim_type;
+  document.getElementById('cm-status').value = node.claim_status;
+  document.getElementById('cm-title').value = node.title;
+  document.getElementById('cm-content').value = node.content;
+  document.getElementById('cm-assumptions').value = (node.assumptions || []).join('\n');
+  document.getElementById('cm-edit-id').value = id;
+  document.getElementById('claim-modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('cm-title').focus(), 80);
+}
+
+function closeClaimModal() {
+  document.getElementById('claim-modal-overlay').classList.remove('open');
+}
+
+function submitClaimModal() {
+  const title = document.getElementById('cm-title').value.trim();
+  const content = document.getElementById('cm-content').value.trim();
+  if (!title) { alert('Title is required.'); return; }
+  if (!content) { alert('Claim content is required.'); return; }
+
+  const type = document.getElementById('cm-type').value;
+  const status = document.getElementById('cm-status').value;
+  const assumptions = document.getElementById('cm-assumptions').value
+    .split('\n').map(s => s.trim()).filter(Boolean);
+
+  if (claimEditMode) {
+    const id = document.getElementById('cm-edit-id').value;
+    const node = getNode(id);
+    const prev = { type: node.claim_type, status: node.claim_status, title: node.title };
+    node.claim_type = type;
+    node.claim_status = status;
+    node.title = title;
+    node.content = content;
+    node.assumptions = assumptions;
+    addDeltaEntry('user', `${id} edited: "${title}"`, `${prev.type}/${prev.status} → ${type}/${status}`);
+    closeClaimModal();
+    renderGraph();
+    updateValidationBar();
+    if (state.selectedNode === id) showNodeDetail(id);
+  } else {
+    // Generate next ID
+    const nums = state.nodes.map(n => parseInt(n.id.replace('C',''))).filter(n => !isNaN(n));
+    const nextNum = nums.length ? Math.max(...nums) + 1 : 1;
+    const newId = 'C' + nextNum;
+
+    // Place near center with slight offset
+    const svg = document.getElementById('graph-svg');
+    const vb = svg.getAttribute('viewBox') ? svg.getAttribute('viewBox').split(' ').map(Number) : [0,0,800,500];
+    const cx = vb[2] / 2 + (Math.random() - 0.5) * 120;
+    const cy = vb[3] / 2 + (Math.random() - 0.5) * 80;
+
+    const newNode = {
+      id: newId, claim_type: type, claim_status: status,
+      title, content, assumptions,
+      x: cx, y: cy,
+      selected: false, underAttack: false, attacked: false,
+      deps: []
+    };
+    state.nodes.push(newNode);
+
+    // Update scaffold claim-net
+    const claimNetItem = state.scaffold.find(s => s.id === 'claim-net');
+    if (claimNetItem) {
+      claimNetItem.content = `${state.nodes.length} claims, ${state.edges.length} typed edges, full dependency graph.`;
+    }
+
+    addDeltaEntry('user', `${newId} added: "${title}"`, `${type}/${status} — new claim`);
+    closeClaimModal();
+    renderGraph();
+    renderScaffold();
+    updateValidationBar();
+    updateArenaChips();
+  }
+}
+
+function updateArenaChips() {
+  const cc = document.getElementById('chip-claims');
+  const ce = document.getElementById('chip-edges');
+  if (cc) cc.textContent = state.nodes.length + ' claims';
+  if (ce) ce.textContent = state.edges.length + ' edges';
+}
+
+// ── Edge Connect Mode ──────────────────────────────────────────────────────
+
+let edgePendingFrom = null;
+let edgePendingTo = null;
+
+function startEdgeConnect(fromId) {
+  state.edgeConnectFrom = fromId;
+  edgePendingFrom = fromId;
+  closeDetail();
+  document.getElementById('graph-svg').classList.add('edge-connect-mode');
+  document.getElementById('edge-mode-banner').style.display = 'block';
+  document.getElementById('edge-mode-banner').textContent =
+    `⟶ From ${fromId}: click a target node to connect — Esc to cancel`;
+}
+
+function cancelEdgeConnect() {
+  state.edgeConnectFrom = null;
+  edgePendingFrom = null;
+  edgePendingTo = null;
+  document.getElementById('graph-svg').classList.remove('edge-connect-mode');
+  document.getElementById('edge-mode-banner').style.display = 'none';
+}
+
+function cancelEdgeModal() {
+  document.getElementById('edge-modal-overlay').classList.remove('open');
+  edgePendingTo = null;
+  // keep edgePendingFrom so user can try another target
+}
+
+function submitEdge() {
+  if (!edgePendingFrom || !edgePendingTo) return;
+  const type = document.getElementById('edge-type-select').value;
+  const label = document.getElementById('edge-label-input').value.trim() || type;
+
+  // Check for duplicate
+  const exists = state.edges.find(e =>
+    (e.from === edgePendingFrom && e.to === edgePendingTo) ||
+    (e.from === edgePendingTo && e.to === edgePendingFrom && e.type === type)
+  );
+  if (exists) { alert('An edge between these nodes already exists.'); cancelEdgeModal(); return; }
+
+  const nums = state.edges.map(e => parseInt(e.id.replace('E',''))).filter(n => !isNaN(n));
+  const nextNum = nums.length ? Math.max(...nums) + 1 : 1;
+
+  state.edges.push({ id: 'E' + nextNum, from: edgePendingFrom, to: edgePendingTo, type, label });
+
+  // Update deps on target node
+  const toNode = getNode(edgePendingTo);
+  if (toNode && type !== 'contradicts') {
+    if (!toNode.deps) toNode.deps = [];
+    if (!toNode.deps.includes(edgePendingFrom)) toNode.deps.push(edgePendingFrom);
+  }
+
+  // Update scaffold claim-net
+  const claimNetItem = state.scaffold.find(s => s.id === 'claim-net');
+  if (claimNetItem) {
+    claimNetItem.content = `${state.nodes.length} claims, ${state.edges.length} typed edges, full dependency graph.`;
+  }
+
+  addDeltaEntry('user',
+    `Edge added: ${edgePendingFrom} ${type} ${edgePendingTo}`,
+    `E${nextNum}: "${label}"`
+  );
+
+  document.getElementById('edge-modal-overlay').classList.remove('open');
+  cancelEdgeConnect();
+  renderGraph();
+  renderScaffold();
+  updateArenaChips();
+  updateValidationBar();
+}
+
+// (selectNode handles edge-connect mode — see node selection section above)
 </script>
 </body>
 </html>
