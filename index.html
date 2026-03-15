@@ -206,7 +206,9 @@
     flex: 1;
     position: relative;
     overflow: hidden;
-    background: radial-gradient(circle at 50% 50%, #f0f4ff 0%, #f5f6f8 70%);
+    background-color: #f8faff;
+    background-image: radial-gradient(circle, #c7d4f0 1px, transparent 1px);
+    background-size: 24px 24px;
   }
   #graph-svg {
     width: 100%;
@@ -230,8 +232,29 @@
     to { transform: translateY(0); opacity: 1; }
   }
   #node-detail h4 { font-size: 13px; margin-bottom: 6px; font-weight: 600; }
-  #node-detail p { font-size: 12px; color: var(--text2); margin-bottom: 10px; line-height: 1.5; }
+  #node-detail p { font-size: 12px; color: var(--text2); margin-bottom: 8px; line-height: 1.5; }
   #node-detail-meta { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  #node-detail-assumptions { margin-bottom: 10px; }
+  #node-detail-assumptions .assumptions-label {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px;
+    color: var(--text2); margin-bottom: 4px;
+  }
+  #node-detail-assumptions ul {
+    list-style: none; display: flex; flex-wrap: wrap; gap: 5px;
+  }
+  #node-detail-assumptions li {
+    font-size: 11px; background: #f5f3ff; border: 1px solid #ddd6fe;
+    color: #6d28d9; border-radius: 5px; padding: 2px 8px; line-height: 1.4;
+  }
+
+  /* Edge delete hit area */
+  .edge-hit { stroke: transparent; stroke-width: 12; fill: none; cursor: pointer; }
+  .edge-hit:hover + .edge-line { stroke-width: 3.5; opacity: 0.8; }
+  .edge-del-btn {
+    fill: #fee2e2; stroke: #fca5a5; stroke-width: 1;
+    cursor: pointer; transition: fill 0.1s;
+  }
+  .edge-del-btn:hover { fill: #fecaca; }
   .tag {
     padding: 2px 8px;
     border-radius: 20px;
@@ -255,21 +278,21 @@
   .action-btn.danger { border-color: #fca5a5; color: var(--red); background: #fff5f5; }
   .action-btn.danger:hover { background: #fee2e2; border-color: #f87171; }
   #detail-close {
-    float: right;
+    position: absolute;
+    top: 14px;
+    right: 16px;
     background: none;
     border: none;
     color: var(--text2);
     cursor: pointer;
     font-size: 18px;
     line-height: 1;
-    margin-top: -2px;
     width: 26px;
     height: 26px;
     border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    float: right;
     transition: background 0.1s;
   }
   #detail-close:hover { background: var(--bg3); }
@@ -641,6 +664,7 @@
   <div class="badge" id="snapshot-badge">Δ-v7</div>
   <div class="badge" id="status-badge">⚠ Under Review</div>
   <button class="menu-btn" onclick="exportJSON()">⬇ Export JSON</button>
+  <button class="menu-btn" onclick="resetState()" style="color:var(--red);border-color:#fca5a5">↺ Reset</button>
   <button class="menu-btn primary" id="submit-btn" onclick="submitBlueprint()" disabled>Submit Blueprint</button>
 </div>
 
@@ -725,6 +749,7 @@
       <div id="node-detail-meta"></div>
       <h4 id="node-detail-title"></h4>
       <p id="node-detail-content"></p>
+      <div id="node-detail-assumptions"></div>
       <div id="node-detail-actions"></div>
     </div>
   </div>
@@ -1126,19 +1151,55 @@ function renderGraph() {
     const from = getNode(edge.from), to = getNode(edge.to);
     if (!from || !to) return;
     const ep = edgeEndpoints(from, to);
+
+    // Invisible wider hit area for hover
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    hit.setAttribute('x1', ep.x1); hit.setAttribute('y1', ep.y1);
+    hit.setAttribute('x2', ep.x2); hit.setAttribute('y2', ep.y2);
+    hit.setAttribute('class', 'edge-hit');
+
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', ep.x1); line.setAttribute('y1', ep.y1);
     line.setAttribute('x2', ep.x2); line.setAttribute('y2', ep.y2);
     line.setAttribute('class', `edge-line edge-${edge.type}`);
-    edgesEl.appendChild(line);
 
     // Edge label
     const lx = (ep.x1 + ep.x2) / 2, ly = (ep.y1 + ep.y2) / 2;
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', lx); text.setAttribute('y', ly - 5);
+    text.setAttribute('x', lx); text.setAttribute('y', ly - 7);
     text.setAttribute('class', 'edge-label');
     text.textContent = edge.label || edge.type;
-    edgesEl.appendChild(text);
+
+    // Delete button (×) at midpoint — shown via CSS :hover on group
+    const eg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    eg.setAttribute('class', 'edge-group');
+    eg.style.cursor = 'pointer';
+
+    const delCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    delCircle.setAttribute('cx', lx); delCircle.setAttribute('cy', ly + 6);
+    delCircle.setAttribute('r', 7);
+    delCircle.setAttribute('class', 'edge-del-btn');
+    delCircle.style.display = 'none';
+
+    const delText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    delText.setAttribute('x', lx); delText.setAttribute('y', ly + 6);
+    delText.setAttribute('text-anchor', 'middle'); delText.setAttribute('dominant-baseline', 'central');
+    delText.setAttribute('font-size', '10'); delText.setAttribute('fill', '#dc2626');
+    delText.setAttribute('font-weight', '700'); delText.setAttribute('pointer-events', 'none');
+    delText.style.display = 'none';
+    delText.textContent = '×';
+
+    hit.addEventListener('mouseenter', () => { delCircle.style.display = ''; delText.style.display = ''; });
+    eg.addEventListener('mouseleave', () => { delCircle.style.display = 'none'; delText.style.display = 'none'; });
+    delCircle.addEventListener('mouseenter', () => { delCircle.style.display = ''; delText.style.display = ''; });
+    delCircle.addEventListener('click', e => { e.stopPropagation(); deleteEdge(edge.id); });
+
+    eg.appendChild(hit);
+    eg.appendChild(line);
+    eg.appendChild(text);
+    eg.appendChild(delCircle);
+    eg.appendChild(delText);
+    edgesEl.appendChild(eg);
   });
 
   // Draw nodes
@@ -1319,6 +1380,15 @@ function showNodeDetail(id) {
   `;
   document.getElementById('node-detail-title').textContent = node.title;
   document.getElementById('node-detail-content').textContent = node.content;
+
+  const aEl = document.getElementById('node-detail-assumptions');
+  if (node.assumptions && node.assumptions.length) {
+    aEl.innerHTML = `<div class="assumptions-label">Assumptions</div><ul>${
+      node.assumptions.map(a => `<li>${a}</li>`).join('')
+    }</ul>`;
+  } else {
+    aEl.innerHTML = '';
+  }
 
   const actions = document.getElementById('node-detail-actions');
   actions.innerHTML = '';
@@ -1842,6 +1912,26 @@ function updateArenaChips() {
   if (ce) ce.textContent = state.edges.length + ' edges';
 }
 
+// ── Delete Edge ────────────────────────────────────────────────────────────
+
+function deleteEdge(edgeId) {
+  const edge = state.edges.find(e => e.id === edgeId);
+  if (!edge) return;
+  state.edges = state.edges.filter(e => e.id !== edgeId);
+  // Remove from target node's deps
+  const toNode = getNode(edge.to);
+  if (toNode && toNode.deps) {
+    toNode.deps = toNode.deps.filter(d => d !== edge.from);
+  }
+  const claimNetItem = state.scaffold.find(s => s.id === 'claim-net');
+  if (claimNetItem) claimNetItem.content = `${state.nodes.length} claims, ${state.edges.length} typed edges, full dependency graph.`;
+  addDeltaEntry('user', `Edge ${edgeId} removed: ${edge.from} ${edge.type} ${edge.to}`, `${edgeId} deleted`);
+  renderGraph();
+  renderScaffold();
+  updateArenaChips();
+  updateValidationBar();
+}
+
 // ── Edge Connect Mode ──────────────────────────────────────────────────────
 
 let edgePendingFrom = null;
@@ -1915,6 +2005,55 @@ function submitEdge() {
 }
 
 // (selectNode handles edge-connect mode — see node selection section above)
+
+// ── localStorage Persistence ───────────────────────────────────────────────
+
+const STORAGE_KEY = 'blueprint-studio-state-v1';
+
+function saveState() {
+  try {
+    const snapshot = {
+      nodes: state.nodes,
+      edges: state.edges,
+      scaffold: state.scaffold,
+      deltaLog: state.deltaLog,
+      attacks: state.attacks
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const snapshot = JSON.parse(raw);
+    if (!snapshot.nodes || !snapshot.edges) return false;
+    state.nodes = snapshot.nodes;
+    state.edges = snapshot.edges;
+    state.scaffold = snapshot.scaffold;
+    state.deltaLog = snapshot.deltaLog;
+    state.attacks = snapshot.attacks || [];
+    return true;
+  } catch(e) { return false; }
+}
+
+function resetState() {
+  if (!confirm('Reset Blueprint? All changes will be lost.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// Auto-save on every state-mutating action
+const _origAdd = addDeltaEntry;
+addDeltaEntry = function(...args) { _origAdd(...args); saveState(); };
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  init();
+});
 </script>
 </body>
 </html>
