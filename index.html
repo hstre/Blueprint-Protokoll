@@ -641,6 +641,83 @@
     background: var(--bg3);
     font-weight: 500;
   }
+
+  /* Demo selector */
+  #demo-select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  #demo-select:focus { outline: none; border-color: var(--blue); }
+
+  /* OpenAlex panel */
+  #openalex-panel {
+    position: fixed;
+    top: 60px; right: 16px;
+    width: 360px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    z-index: 40;
+    display: none;
+    animation: popIn 0.18s ease;
+  }
+  #openalex-panel.open { display: block; }
+  #openalex-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #openalex-header h4 { font-size: 13px; font-weight: 600; }
+  #openalex-header span { font-size: 11px; color: var(--text2); }
+  #openalex-close {
+    background: none; border: none; cursor: pointer; color: var(--text2);
+    font-size: 16px; width: 24px; height: 24px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #openalex-close:hover { background: var(--bg3); }
+  #openalex-body { padding: 14px 16px; }
+  #openalex-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  #openalex-query {
+    flex: 1; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 12px;
+    padding: 7px 11px; font-family: inherit;
+  }
+  #openalex-query:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  #openalex-fetch-btn {
+    background: var(--blue); border: none; border-radius: 8px;
+    color: #fff; font-size: 12px; font-weight: 600; padding: 7px 14px;
+    cursor: pointer; white-space: nowrap;
+  }
+  #openalex-fetch-btn:hover { background: #1d4ed8; }
+  #openalex-fetch-btn:disabled { background: var(--bg3); color: var(--text2); cursor: not-allowed; }
+  #openalex-status { font-size: 11.5px; color: var(--text2); margin-bottom: 8px; min-height: 18px; }
+  #openalex-results { max-height: 260px; overflow-y: auto; }
+  .oa-paper {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 7px; cursor: pointer; transition: border-color 0.1s, background 0.1s;
+  }
+  .oa-paper:hover { border-color: var(--blue); background: #f0f7ff; }
+  .oa-paper.selected { border-color: var(--blue); background: #eff6ff; }
+  .oa-title { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.35; margin-bottom: 4px; }
+  .oa-meta { font-size: 10.5px; color: var(--text2); display: flex; gap: 8px; flex-wrap: wrap; }
+  .oa-concept { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe;
+    border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 500; }
+  #openalex-import-btn {
+    width: 100%; margin-top: 10px; padding: 8px;
+    background: var(--green); border: none; border-radius: 8px;
+    color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+    display: none;
+  }
+  #openalex-import-btn:hover { background: #15803d; }
 </style>
 </head>
 <body>
@@ -659,13 +736,39 @@
     Blueprint Studio
   </div>
   <div id="blueprint-title">
-    <span>Draft /</span>CO₂ Tax Effectiveness — Transport Sector Germany 2025–2035
+    <span>Demo /</span><span id="title-text">CO₂ Tax Effectiveness — Transport Sector Germany 2025–2035</span>
   </div>
+  <select id="demo-select" onchange="loadDemo(this.value)" title="Load a demo blueprint">
+    <option value="co2">CO₂ Tax · Transport DE</option>
+    <option value="ubi">Universal Basic Income</option>
+    <option value="ai">AI &amp; Job Displacement</option>
+  </select>
+  <button class="menu-btn" onclick="toggleOpenAlex()" title="Import papers from OpenAlex">🔬 OpenAlex</button>
   <div class="badge" id="snapshot-badge">Δ-v7</div>
   <div class="badge" id="status-badge">⚠ Under Review</div>
   <button class="menu-btn" onclick="exportJSON()">⬇ Export JSON</button>
   <button class="menu-btn" onclick="resetState()" style="color:var(--red);border-color:#fca5a5">↺ Reset</button>
   <button class="menu-btn primary" id="submit-btn" onclick="submitBlueprint()" disabled>Submit Blueprint</button>
+</div>
+
+<!-- OpenAlex Panel -->
+<div id="openalex-panel">
+  <div id="openalex-header">
+    <div>
+      <h4>🔬 OpenAlex Live Import</h4>
+      <span>Search research papers → auto-generate claim graph</span>
+    </div>
+    <button id="openalex-close" onclick="toggleOpenAlex()">×</button>
+  </div>
+  <div id="openalex-body">
+    <div id="openalex-input-row">
+      <input id="openalex-query" type="text" placeholder="e.g. carbon tax transport emissions" onkeydown="if(event.key==='Enter')fetchOpenAlex()">
+      <button id="openalex-fetch-btn" onclick="fetchOpenAlex()">Search</button>
+    </div>
+    <div id="openalex-status">Enter a research topic and press Search.</div>
+    <div id="openalex-results"></div>
+    <button id="openalex-import-btn" onclick="importOpenAlexSelected()">⬇ Import selected as claims</button>
+  </div>
 </div>
 
 <!-- Main -->
@@ -2047,6 +2150,275 @@ function resetState() {
 // Auto-save on every state-mutating action
 const _origAdd = addDeltaEntry;
 addDeltaEntry = function(...args) { _origAdd(...args); saveState(); };
+
+// ── Demo Blueprints ────────────────────────────────────────────────────────
+
+const DEMOS = {
+  co2: null, // populated from initial state on first load
+
+  ubi: {
+    title: 'Universal Basic Income — Labour Market Effects',
+    nodes: [
+      { id:'C1', claim_type:'N', claim_status:'W',
+        title:'UBI is normatively justified',
+        content:'An unconditional basic income constitutes a legitimate expression of social citizenship rights, grounding economic security as a precondition for genuine freedom, independent of labour-market participation.',
+        x:400, y:220, assumptions:['Social citizenship entails positive entitlements','Economic security is a precondition for autonomy'], selected:false, underAttack:false, attacked:false, deps:['C2','C3','C4','C5'] },
+      { id:'C2', claim_type:'E', claim_status:'W',
+        title:'Finland pilot: no significant labour supply reduction',
+        content:'The Finnish UBI experiment (2017–2018, n=2 000) found no statistically significant reduction in employment among recipients compared to controls, while wellbeing and mental health scores improved markedly.',
+        x:155, y:130, assumptions:['2-year horizon sufficient to capture behavioural adjustment','Finnish labour market generalisable to other high-income contexts'], selected:false, underAttack:false, attacked:false, deps:[] },
+      { id:'C3', claim_type:'L', claim_status:'S',
+        title:'Income floor eliminates poverty traps',
+        content:'An unconditional transfer above the subsistence threshold logically removes the withdrawal rates that characterise means-tested benefits, eliminating the marginal effective tax rates that create poverty traps.',
+        x:155, y:340, assumptions:['UBI set above effective subsistence threshold','No simultaneous means-tested benefits retained'], selected:false, underAttack:false, attacked:false, deps:['C2'] },
+      { id:'C4', claim_type:'E', claim_status:'U',
+        title:'Inflation risk under full UBI implementation',
+        content:'Macroeconomic modelling suggests demand-side inflation of 1.5–4% under full UBI rollout, contingent on financing mechanism; VAT-funded models show lower inflationary effects than money-financed variants.',
+        x:645, y:130, assumptions:['Standard IS-LM model applies','Central bank does not offset demand shock'], selected:false, underAttack:false, attacked:false, deps:[] },
+      { id:'C5', claim_type:'O', claim_status:'W',
+        title:'Tax-and-transfer system as implementation base',
+        content:'Existing personal income tax infrastructure and benefit administration systems provide sufficient institutional capacity to implement a UBI through income tax integration, requiring legislative rather than administrative reform.',
+        x:645, y:340, assumptions:['Political will for tax reform exists','No major evasion/avoidance at UBI income levels'], selected:false, underAttack:false, attacked:false, deps:[] }
+    ],
+    edges: [
+      { id:'E1', from:'C2', to:'C1', type:'supports', label:'grounds' },
+      { id:'E2', from:'C3', to:'C1', type:'supports', label:'removes traps' },
+      { id:'E3', from:'C3', to:'C2', type:'requires', label:'depends' },
+      { id:'E4', from:'C4', to:'C1', type:'contradicts', label:'challenges' },
+      { id:'E5', from:'C5', to:'C1', type:'supports', label:'enables' }
+    ],
+    scaffold: [
+      { id:'guiding-q', label:'Guiding Question', icon:'❓', status:'ok', content:'Does an unconditional basic income improve labour market outcomes and wellbeing without unsustainable macroeconomic side-effects?' },
+      { id:'scope', label:'Scope', icon:'◎', status:'ok', content:'High-income OECD countries, implementation horizon 5–10 years, working-age population, price effects and fiscal sustainability.' },
+      { id:'assumptions', label:'Assumptions', icon:'⊕', status:'ok', content:'4 explicit assumptions registered across empirical and operative claims.' },
+      { id:'concepts', label:'Concept Definitions', icon:'📖', status:'ok', content:'UBI, unconditional transfer, poverty trap, marginal effective tax rate, social citizenship, fiscal neutrality.' },
+      { id:'claim-net', label:'Claim Network', icon:'⬡', status:'ok', content:'5 claims, 5 typed edges, full dependency graph.' },
+      { id:'tests', label:'Tests / Counter-Examples', icon:'⚡', status:'warn', content:'Kenya GiveDirectly long-term RCT (2022): sustained positive effects at 12-year follow-up. Inflation concern partially falsified. Not yet fully integrated.' },
+      { id:'uncertainty', label:'Uncertainty Zones', icon:'≈', status:'err', content:'MISSING: Inflation risk (C4) remains unresolved — financing mechanism sensitivity analysis required.' },
+      { id:'synthesis', label:'Synthesis / Decision', icon:'◈', status:'err', content:'MISSING: No synthesis block. Required for submission.' }
+    ],
+    deltaLog: [
+      { ts:'08:05', actor:'user', desc:'Blueprint initialized: UBI Labour Market Effects', ref:'Scaffold v1' },
+      { ts:'08:19', actor:'user', desc:'C2 added: Finland UBI pilot 2017–2018', ref:'C2 → W (empirical)' },
+      { ts:'08:31', actor:'user', desc:'C3 derived: poverty trap logic from C2', ref:'C3 → S (logical)' },
+      { ts:'08:47', actor:'ai', desc:'Precision check: Finland pilot limited to 2-year horizon — long-run elasticity unknown', ref:'AI:precision → C2 warning' },
+      { ts:'09:02', actor:'user', desc:'C4 added: inflation risk from macroeconomic modelling', ref:'C4 → U (contested)' },
+      { ts:'09:18', actor:'user', desc:'C4 marked as contradicting C1 — open epistemic conflict registered', ref:'C4 contradicts C1' },
+      { ts:'09:35', actor:'ai', desc:'Explore: 3 financing mechanisms identified — VAT, wealth tax, money-financed', ref:'AI:explore → C4' }
+    ]
+  },
+
+  ai: {
+    title: 'AI Automation & Job Displacement — Policy Implications',
+    nodes: [
+      { id:'C1', claim_type:'E', claim_status:'W',
+        title:'~47% US jobs face high automation risk',
+        content:'Frey & Osborne (2013) estimate that approximately 47% of US employment is at high risk of automation within the next decade or two, based on a task-based model applied to O*NET occupation data.',
+        x:400, y:210, assumptions:['O*NET task descriptions are accurate proxies for automability','Bottleneck tasks (perception, creativity, social intelligence) remain non-automatable'], selected:false, underAttack:false, attacked:false, deps:['C2','C3','C4','C5'] },
+      { id:'C2', claim_type:'L', claim_status:'S',
+        title:'Routine task substitution follows capital price decline',
+        content:'As capital costs for automation fall below the wage cost of routine labour, profit-maximising firms substitute capital for routine cognitive and manual tasks — a logical consequence of cost minimisation under standard production theory.',
+        x:155, y:120, assumptions:['Firms are profit-maximising','Capital and labour are substitutable in routine tasks'], selected:false, underAttack:false, attacked:false, deps:[] },
+      { id:'C3', claim_type:'E', claim_status:'U',
+        title:'Net job creation: historical precedent ambiguous',
+        content:'Historical analyses of prior general-purpose technology transitions (electrification, ICT) show net job creation over 10–20 year horizons, but transition periods generate significant structural unemployment concentrated in specific regions and demographics.',
+        x:155, y:340, assumptions:['AI constitutes a general-purpose technology analogous to prior GPTs','Transition dynamics are historically comparable'], selected:false, underAttack:false, attacked:false, deps:['C2'] },
+      { id:'C4', claim_type:'N', claim_status:'U',
+        title:'Technological unemployment is a social risk requiring policy response',
+        content:'Even if automation increases aggregate welfare, concentrated and rapid displacement of workers constitutes a social harm that generates a policy obligation to provide transitional support, independent of net aggregate outcome.',
+        x:645, y:120, assumptions:['Aggregate welfare improvements do not automatically resolve distributional harms','Social insurance is a legitimate policy instrument'], selected:false, underAttack:false, attacked:false, deps:[] },
+      { id:'C5', claim_type:'O', claim_status:'W',
+        title:'Retraining programmes show mixed effectiveness',
+        content:'Meta-analyses of active labour market policies (ALMPs) show heterogeneous effects: classroom training shows limited impact (effect size ≈ 0.05–0.1 on employment probability), while on-the-job training and wage subsidies show stronger effects.',
+        x:645, y:340, assumptions:['ALMP evidence from OECD countries transfers to AI-displacement context','Training supply can scale to match displacement pace'], selected:false, underAttack:false, attacked:false, deps:[] }
+    ],
+    edges: [
+      { id:'E1', from:'C2', to:'C1', type:'supports', label:'mechanism' },
+      { id:'E2', from:'C3', to:'C1', type:'requires', label:'contextualises' },
+      { id:'E3', from:'C3', to:'C2', type:'requires', label:'depends' },
+      { id:'E4', from:'C4', to:'C1', type:'supports', label:'normative frame' },
+      { id:'E5', from:'C5', to:'C4', type:'requires', label:'operationalises' }
+    ],
+    scaffold: [
+      { id:'guiding-q', label:'Guiding Question', icon:'❓', status:'ok', content:'Does AI-driven automation require active labour market policy intervention, and if so, of what kind?' },
+      { id:'scope', label:'Scope', icon:'◎', status:'ok', content:'OECD economies, 2024–2035 horizon, wage-employment nexus, excludes capital income redistribution and UBI.' },
+      { id:'assumptions', label:'Assumptions', icon:'⊕', status:'ok', content:'5 explicit assumptions registered across empirical, logical, and operative claims.' },
+      { id:'concepts', label:'Concept Definitions', icon:'📖', status:'ok', content:'Automation risk, routine task, general-purpose technology (GPT), structural unemployment, ALMP, retraining effectiveness.' },
+      { id:'claim-net', label:'Claim Network', icon:'⬡', status:'ok', content:'5 claims, 5 typed edges, full dependency graph.' },
+      { id:'tests', label:'Tests / Counter-Examples', icon:'⚡', status:'ok', content:'Counter-test: Acemoglu & Restrepo (2022) find that automation has so-far reduced labour share — partial support for C1 but challenges net-positive framing in C3.' },
+      { id:'uncertainty', label:'Uncertainty Zones', icon:'≈', status:'err', content:'MISSING: Pace of AI capability development is unmodelled. GPT analogy (C3) may not hold if transition speed exceeds historical precedents.' },
+      { id:'synthesis', label:'Synthesis / Decision', icon:'◈', status:'err', content:'MISSING: No synthesis block. Required for submission.' }
+    ],
+    deltaLog: [
+      { ts:'10:00', actor:'user', desc:'Blueprint initialized: AI Automation & Job Displacement', ref:'Scaffold v1' },
+      { ts:'10:12', actor:'user', desc:'C1 added: Frey & Osborne (2013) 47% at-risk estimate', ref:'C1 → W (empirical)' },
+      { ts:'10:24', actor:'user', desc:'C2 derived: routine task substitution as logical consequence of cost minimisation', ref:'C2 → S (logical)' },
+      { ts:'10:38', actor:'ai', desc:'Precision check: 47% estimate contested — Arntz et al. (2016) find 9% using task-level analysis', ref:'AI:precision → C1 conflict' },
+      { ts:'10:52', actor:'user', desc:'C3 added: GPT historical precedent, status U due to ambiguity', ref:'C3 → U' },
+      { ts:'11:05', actor:'user', desc:'C4 added: normative frame — technological unemployment as social risk', ref:'C4 → U (normative)' },
+      { ts:'11:20', actor:'ai', desc:'Adversarial: C3 historical analogy challenged — AI speed and breadth may break GPT comparability', ref:'ATK-1 → C3 PENDING' }
+    ]
+  }
+};
+
+function loadDemo(key) {
+  if (key === 'co2') {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+    return;
+  }
+  const demo = DEMOS[key];
+  if (!demo) return;
+
+  state.nodes = demo.nodes.map(n => Object.assign({}, n));
+  state.edges = demo.edges.map(e => Object.assign({}, e));
+  state.scaffold = demo.scaffold.map(s => Object.assign({}, s));
+  state.deltaLog = demo.deltaLog.map(d => Object.assign({}, d));
+  state.attacks = [];
+  state.selectedNode = null;
+  state.aiMode = null;
+
+  document.getElementById('title-text').textContent = demo.title;
+  document.getElementById('snapshot-badge').textContent = 'Δ-v' + demo.deltaLog.length;
+
+  closeDetail();
+  renderScaffold();
+  renderDeltaLog();
+  renderGraph();
+  updateValidationBar();
+  updateArenaChips();
+  saveState();
+
+  const sel = document.getElementById('demo-select');
+  if (sel) sel.value = key;
+}
+
+// ── OpenAlex Live Loader ───────────────────────────────────────────────────
+
+let oaSelectedIds = new Set();
+let oaResults = [];
+
+function toggleOpenAlex() {
+  const panel = document.getElementById('openalex-panel');
+  panel.classList.toggle('open');
+}
+
+async function fetchOpenAlex() {
+  const query = document.getElementById('openalex-query').value.trim();
+  if (!query) return;
+
+  const btn = document.getElementById('openalex-fetch-btn');
+  const statusEl = document.getElementById('openalex-status');
+  const resultsEl = document.getElementById('openalex-results');
+  const importBtn = document.getElementById('openalex-import-btn');
+
+  btn.disabled = true;
+  btn.textContent = 'Searching…';
+  statusEl.textContent = 'Fetching from api.openalex.org…';
+  resultsEl.innerHTML = '';
+  importBtn.style.display = 'none';
+  oaSelectedIds.clear();
+  oaResults = [];
+
+  try {
+    const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=8&select=id,title,abstract_inverted_index,concepts,cited_by_count,publication_year&mailto=demo@blueprint-studio.dev`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    oaResults = data.results || [];
+
+    if (!oaResults.length) {
+      statusEl.textContent = 'No results found. Try a different query.';
+      btn.disabled = false; btn.textContent = 'Search';
+      return;
+    }
+
+    statusEl.textContent = `${oaResults.length} papers found. Select papers to import as claims.`;
+    resultsEl.innerHTML = '';
+
+    oaResults.forEach((paper, i) => {
+      const concepts = (paper.concepts || []).slice(0, 3).map(c => c.display_name);
+      const abstract = reconstructAbstract(paper.abstract_inverted_index);
+      const div = document.createElement('div');
+      div.className = 'oa-paper';
+      div.dataset.idx = i;
+      div.innerHTML = `
+        <div class="oa-title">${paper.title || '(no title)'}</div>
+        <div class="oa-meta">
+          <span>${paper.publication_year || '?'}</span>
+          <span>Cited: ${paper.cited_by_count || 0}</span>
+          ${concepts.map(c => `<span class="oa-concept">${c}</span>`).join('')}
+        </div>
+      `;
+      div.title = abstract ? abstract.substring(0, 200) + '…' : 'No abstract';
+      div.addEventListener('click', () => {
+        if (oaSelectedIds.has(i)) { oaSelectedIds.delete(i); div.classList.remove('selected'); }
+        else { oaSelectedIds.add(i); div.classList.add('selected'); }
+        importBtn.style.display = oaSelectedIds.size ? 'block' : 'none';
+        importBtn.textContent = `⬇ Import ${oaSelectedIds.size} paper${oaSelectedIds.size>1?'s':''} as claims`;
+      });
+      resultsEl.appendChild(div);
+    });
+
+  } catch(err) {
+    statusEl.textContent = `Error: ${err.message}. (CORS or network issue — try from a local browser.)`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Search';
+}
+
+function reconstructAbstract(inv) {
+  if (!inv) return '';
+  const words = [];
+  for (const [word, positions] of Object.entries(inv)) {
+    positions.forEach(p => { words[p] = word; });
+  }
+  return words.join(' ');
+}
+
+function importOpenAlexSelected() {
+  if (!oaSelectedIds.size) return;
+
+  const svg = document.getElementById('graph-svg');
+  const vb = svg.getAttribute('viewBox') ? svg.getAttribute('viewBox').split(' ').map(Number) : [0,0,800,500];
+
+  const nums = state.nodes.map(n => parseInt(n.id.replace('C',''))).filter(n => !isNaN(n));
+  let nextNum = nums.length ? Math.max(...nums) + 1 : 1;
+
+  const added = [];
+  [...oaSelectedIds].forEach(idx => {
+    const paper = oaResults[idx];
+    if (!paper) return;
+
+    const abstract = reconstructAbstract(paper.abstract_inverted_index);
+    const concepts = (paper.concepts || []).slice(0, 3).map(c => c.display_name);
+    const id = 'C' + nextNum++;
+    const cx = vb[2] * 0.3 + Math.random() * vb[2] * 0.4;
+    const cy = vb[3] * 0.2 + Math.random() * vb[3] * 0.6;
+
+    const node = {
+      id, claim_type: 'E', claim_status: paper.cited_by_count > 100 ? 'W' : 'U',
+      title: (paper.title || 'Imported paper').substring(0, 72),
+      content: abstract ? abstract.substring(0, 400) : `Paper imported from OpenAlex. Year: ${paper.publication_year}. Concepts: ${concepts.join(', ')}.`,
+      assumptions: concepts,
+      x: cx, y: cy,
+      selected: false, underAttack: false, attacked: false, deps: []
+    };
+    state.nodes.push(node);
+    added.push(id);
+  });
+
+  const claimNetItem = state.scaffold.find(s => s.id === 'claim-net');
+  if (claimNetItem) claimNetItem.content = `${state.nodes.length} claims, ${state.edges.length} typed edges, full dependency graph.`;
+
+  addDeltaEntry('user', `OpenAlex import: ${added.length} paper(s) added as E-claims`, `IDs: ${added.join(', ')}`);
+  renderGraph();
+  renderScaffold();
+  updateArenaChips();
+  updateValidationBar();
+  toggleOpenAlex();
+}
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 
