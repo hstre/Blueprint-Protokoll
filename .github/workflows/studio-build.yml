@@ -3,6 +3,7 @@ name: Blueprint Studio — Build Installers
 on:
   push:
     branches: ['**']
+    tags: ['studio-v*']
     paths: ['blueprint-studio/**', '.github/workflows/studio-build.yml']
   workflow_dispatch:
 
