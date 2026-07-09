@@ -47,11 +47,9 @@ The specification covers:
 
 ## Implementation Status
 
-Blueprint Studio has not been implemented.
+**A working MVP implementation now lives in [`blueprint-studio/`](./blueprint-studio/)** — a local desktop app (Windows `.exe` installer, macOS `.dmg`) implementing the core of the specification: the claim graph editor, mandatory-block scaffolding, the validation compiler with gate logic, the Δ-log with enforced change rationales, immutable snapshots, the cascade ("tremor") system, and the three role-separated AI modes (exploration / precision / adversarial) with mandatory attack responses. Installers are built by GitHub Actions (`Blueprint Studio — Build Installers` workflow); see [`blueprint-studio/README.md`](./blueprint-studio/README.md) for details.
 
-I attempted to build it with the assistance of LLMs. The attempt failed — not because the specification is wrong, but because the complexity of the claim graph, revision logic, and AI integration exceeds what can be reliably assembled through LLM-assisted coding without a dedicated development team.
-
-The specification is complete and detailed enough to serve as a serious engineering brief. If you are a developer or team interested in building this, the document is yours. No conditions, no equity claims, no strings attached. The goal is that this exists, not that I own it.
+An earlier attempt to build this with LLM assistance failed. The specification proved complete and detailed enough to serve as a serious engineering brief — which is exactly how it was used. If you want to extend it (consolidation engine, certification workflow, multi-user), the spec's phase 2+ roadmap is the map. No conditions, no equity claims, no strings attached. The goal is that this exists, not that I own it.
 
 -----
 

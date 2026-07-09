@@ -1,0 +1,46 @@
+appId: org.blueprintprotocol.studio
+productName: Blueprint Studio
+copyright: © 2026 H.-Steffen Rentschler — MIT License
+
+directories:
+  buildResources: build
+  output: dist
+
+files:
+  - out/**
+  - package.json
+
+asar: true
+
+mac:
+  category: public.app-category.education
+  target:
+    - target: dmg
+      arch: [universal]
+  icon: build/icon.png
+  # unsigned build — users open via right-click → Open on first launch
+  identity: null
+
+dmg:
+  title: Blueprint Studio
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+  license: LICENSE
+
+linux:
+  target:
+    - AppImage
+  category: Education
+  icon: build/icon.png
+
+publish: null
